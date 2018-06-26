@@ -43,6 +43,10 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
     }
 
     fun limit(limit: Int): Select {
+        if (limit < 0) {
+            throw RuntimeException("Limit has to be a positive number")
+        }
+
         this.limit = limit
 
         return this
@@ -87,7 +91,7 @@ class From<A : Statement>(val query: A, val schema: String?, val table: String) 
     }
 
     override fun build(): String {
-        return "FROM ${if (schema != null) schema + '.' else ""}$table ${if (where != null) "WHERE ${where!!.map { b -> "(${b.build()})" }.joinToString(separator = " or ")}" else ""}"
+        return "FROM ${if (schema != null) schema + '.' else ""}$table ${if (where != null) "WHERE ${where!!.map { b -> "(${b.build()})" }.joinToString(separator = " OR ")}" else ""}"
     }
 }
 
@@ -152,44 +156,56 @@ class DESCBuilder : OrderingBuilder<String?>() {
 }
 
 enum class ConditionType(val symbol: String) {
-    EQ("="), GE(">="), LE("<="), GT(">"), LT("<"), LIKE("LIKE"), IN("IN")
+    EQ("="), GE(">="), LE("<="), GT(">"), LT("<"), LIKE("LIKE"), IN("IN"), IS_NULL("IS NULL"), IS_NOT_NULL("IS NOT NULL"), NOT("NOT")
 }
 
 abstract class Condition(val conditionType: ConditionType, val and: Condition? = null) : Clause
 
+class WrapperConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
+    lateinit var condition: Condition
+
+    override fun build(): Condition = WrapperCondition(conditionType, condition)
+}
+
 class UnaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
-    var column: Any? = null
+    lateinit var column: Any
     var and: Condition? = null
 
-    override fun build(): Condition = UnaryCondition(conditionType, and, column ?: "")
+    override fun build(): Condition = UnaryCondition(conditionType, and, column)
 }
 
 class BinaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
-    var left: Any? = null
-    var right: Any? = null
+    lateinit var left: Any
+    lateinit var right: Any
     var and: Condition? = null
 
-    override fun build(): Condition = BinaryCondition(conditionType, and, left ?: "", right ?: "")
+    override fun build(): Condition = BinaryCondition(conditionType, and, left, right)
 }
 
 class TernaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
-    var left: Any? = null
-    var right: Any? = null
-    var mid: Any? = null
+    lateinit var left: Any
+    lateinit var right: Any
+    lateinit var mid: Any
     var and: Condition? = null
 
-    override fun build(): Condition = TernaryCondition(conditionType, and, left ?: "", right ?: "", mid ?: "")
+    override fun build(): Condition = TernaryCondition(conditionType, and, left, right, mid)
+}
+
+class WrapperCondition(conditionType: ConditionType, val condition: Condition): Condition(conditionType) {
+    override fun build(): String {
+        return "${conditionType.symbol} ${condition.build()}"
+    }
 }
 
 class UnaryCondition(conditionType: ConditionType, and: Condition? = null, val column: Any) : Condition(conditionType, and) {
     override fun build(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return "$column ${conditionType.symbol} ${if (and != null) "AND ${and.build()}" else "" }"
     }
 }
 
 class BinaryCondition(conditionType: ConditionType, and: Condition? = null, val left: Any, val right: Any) : Condition(conditionType, and) {
     override fun build(): String {
-        return "$left ${conditionType.symbol} $right ${if (and != null) "and ${and.build()}" else "" }"
+        return "$left ${conditionType.symbol} $right ${if (and != null) "AND ${and.build()}" else "" }"
     }
 }
 
@@ -198,6 +214,12 @@ class TernaryCondition(conditionType: ConditionType, and: Condition? = null, val
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }
+
+fun isNull(block: UnaryConditionBuilder.() -> Unit): Condition = UnaryConditionBuilder(ConditionType.IS_NULL).apply(block).build()
+
+fun isNotNull(block: UnaryConditionBuilder.() -> Unit): Condition = UnaryConditionBuilder(ConditionType.IS_NOT_NULL).apply(block).build()
+
+fun not(block: WrapperConditionBuilder.() -> Unit): Condition = WrapperConditionBuilder(ConditionType.NOT).apply(block).build()
 
 fun eq(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.EQ).apply(block).build()
 
