@@ -1,7 +1,7 @@
 package com.github.gr1f0n6x.querydsl
 
 object QueryBuilder {
-    fun select(vararg columns: String): Select = Select(*columns)
+    fun select(vararg columns: Any): Select = Select(*columns)
 
     fun update(): Update = Update()
 
@@ -18,38 +18,39 @@ object QueryBuilder {
     fun alter(): Alter = Alter()
 }
 
-interface Query {}
-
-interface Clause {}
-
-enum class QueryType {
-    DDL, DML
-}
-
 enum class StatementType(val type: QueryType) {
     INSERT(QueryType.DML), UPDATE(QueryType.DML), DELETE(QueryType.DML), SELECT(QueryType.DML),
     CREATE(QueryType.DDL), ALTER(QueryType.DDL), TRUNCATE(QueryType.DDL), DROP(QueryType.DDL),
     GRANT(QueryType.DDL)
 }
 
-class Select(private vararg val columns: String): Query {
-    constructor(): this("*")
+interface Clause {
+    fun build(): String
+}
 
-    private var from: From<Select>? = null
-    private var where: Where? = null
-    private var orderBy: OrderBy? = null
-    private var groupBy: GroupBy? = null
+interface Statement: Clause
+
+abstract class ForwardStatement<out T: Statement>(val statement: T): Statement
+
+class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
+    private lateinit var from: From<Select>
     private var limit: Int? = null
 
-    fun from(table: String): From<Select> = From(this, table)
+    fun from(schema: String? = null, table: String): From<Select> {
+        from = From(this, schema, table)
 
-    fun from(schema: String, table: String): From<Select> = From(this, schema, table)
+        return from
+    }
 
-    fun orderBy(): OrderBy = OrderBy()
+    fun limit(limit: Int): Select {
+        this.limit = limit
 
-    fun having(): Having = Having()
+        return this
+    }
 
-    fun limit(limit: Int): Select = this
+    override fun build(): String {
+        return "SELECT ${columns.joinToString(separator = ", ")} ${from.build()} ${if (limit != null) "LIMIT $limit" else ""}"
+    }
 }
 
 class Update {}
@@ -66,157 +67,148 @@ class Drop {}
 
 class Alter {}
 
-class From<A: Query>(val query: A, val schema: String?, val table: String): Clause {
-    constructor(query: A, table: String): this(query, null, table)
+class From<A : Statement>(val query: A, val schema: String?, val table: String) : ForwardStatement<A>(query) {
+    constructor(query: A, table: String) : this(query, null, table)
 
-    fun innerJoin(schema: String, table: String): InnerJoin<A> = InnerJoin(this, schema, table)
+    private var where: Array<out Condition>? = null
 
-    fun innerJoin(table: String): InnerJoin<A> = InnerJoin(this, table)
+    fun innerJoin(schema: String? = null, table: String): Join<A> = Join(this, schema, table, JoinType.INNER)
 
-    fun leftJoin(schema: String, table: String): LeftJoin<A> = LeftJoin(this, schema, table)
+    fun leftJoin(schema: String? = null, table: String): Join<A> = Join(this, schema, table, JoinType.LEFT)
 
-    fun leftJoin(table: String): LeftJoin<A> = LeftJoin(this, table)
+    fun rightJoin(schema: String? = null, table: String): Join<A> = Join(this, schema, table, JoinType.RIGHT)
 
-    fun rightJoin(schema: String, table: String): RightJoin<A> = RightJoin(this, schema, table)
-
-    fun rightJoin(table: String): RightJoin<A> = RightJoin(this, table)
-
-    fun fullJoin(schema: String, table: String): FullJoin<A> = FullJoin(this, schema, table)
-
-    fun fullJoin(table: String): FullJoin<A> = FullJoin(this, table)
+    fun fullJoin(schema: String? = null, table: String): Join<A> = Join(this, schema, table, JoinType.FULL)
 
     fun where(vararg condition: Condition): A {
-        Where(this, *condition)
+        where = condition
 
         return query
     }
+
+    override fun build(): String {
+        return "FROM ${if (schema != null) schema + '.' else ""}$table ${if (where != null) "WHERE ${where!!.map { b -> "(${b.build()})" }.joinToString(separator = " or ")}" else ""}"
+    }
 }
-
-class Where(val clause: Clause, vararg val condition: Condition): Clause
-
-class OrderBy: Clause
-
-class GroupBy: Clause
-
-class Having: Clause
 
 enum class JoinType {
     INNER, LEFT, RIGHT, FULL
 }
 
-abstract class Join<A: Query>(val clause: From<A>, val schema: String?, val table: String): Clause {
+class Join<A: Statement>(val clause: From<A>, val schema: String? = null, val table: String, val joinType: JoinType) : ForwardStatement<From<A>>(clause) {
+
     private lateinit var condition: Array<out Condition>
-    abstract val joinType: JoinType
 
     fun on(vararg condition: Condition): From<A> {
         this.condition = condition
 
         return clause
     }
+
+    override fun build(): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
 }
 
-class InnerJoin<A: Query>(clause: From<A>, schema: String?, table: String) : Join<A>(clause, schema, table) {
-    constructor(clause: From<A>, table: String): this(clause, null, table)
-
-    override val joinType: JoinType = JoinType.INNER
+class Where(vararg val condition: Condition) : Clause {
+    override fun build(): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
 }
 
-class LeftJoin<A: Query>(clause: From<A>, schema: String?, table: String) : Join<A>(clause, schema, table) {
-    constructor(clause: From<A>, table: String): this(clause, null, table)
-
-    override val joinType: JoinType = JoinType.LEFT
+enum class QueryType {
+    DDL, DML
 }
 
-class RightJoin<A: Query>(clause: From<A>, schema: String?, table: String) : Join<A>(clause, schema, table) {
-    constructor(clause: From<A>, table: String): this(clause, null, table)
-
-    override val joinType: JoinType = JoinType.RIGHT
-}
-
-class FullJoin<A: Query>(clause: From<A>, schema: String?, table: String) : Join<A>(clause, schema, table) {
-    constructor(clause: From<A>, table: String): this(clause, null, table)
-
-    override val joinType: JoinType = JoinType.FULL
-}
-
-interface ClauseBuilder<out T: Clause> {
+interface ClauseBuilder<out T : Clause> {
     fun build(): T
 }
 
-interface Condition: Clause
+abstract class Aggregation<A>(val column: A) : Clause
+abstract class Grouping<A>(val column: A) : Clause
 
-abstract class Ordering<A>(val column: A): Clause
-abstract class OrderingBuilder<A>: ClauseBuilder<Ordering<A>> {
+
+abstract class Ordering<A>(val column: A) : Clause
+abstract class OrderingBuilder<A> : ClauseBuilder<Ordering<A>> {
     var column: A? = null
 }
 
-class ASC(column: String?): Ordering<String?>(column)
-class ASCBuilder: OrderingBuilder<String?>() {
+class ASC(column: String?) : Ordering<String?>(column) {
+    override fun build(): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+}
+class ASCBuilder : OrderingBuilder<String?>() {
     override fun build(): ASC = ASC(column)
 }
 
-class DESC(column: String?): Ordering<String?>(column)
-class DESCBuilder: OrderingBuilder<String?>() {
+class DESC(column: String?) : Ordering<String?>(column) {
+    override fun build(): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+}
+class DESCBuilder : OrderingBuilder<String?>() {
     override fun build(): DESC = DESC(column)
 }
 
-abstract class Comparison<A, B>(val left: A, val right: B, val and: Comparison<A, B>? = null): Condition
-
-interface ConditionBuilder<out T: Condition>: ClauseBuilder<T>
-
-abstract class ComparisonBuilder<A, B>: ConditionBuilder<Comparison<A, B>> {
-    var left: A? = null
-    var right: B? = null
-    var and: Comparison<A, B>? = null
+enum class ConditionType(val symbol: String) {
+    EQ("="), GE(">="), LE("<="), GT(">"), LT("<"), LIKE("LIKE"), IN("IN")
 }
 
-class EQ(left: String?, right: String?, and: Comparison<String?, String?>?): Comparison<String?, String?>(left, right, and)
-class EQBuilder: ComparisonBuilder<String?, String?>() {
-    override fun build(): EQ = EQ(left, right, and)
+abstract class Condition(val conditionType: ConditionType, val and: Condition? = null) : Clause
+
+class UnaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
+    var column: Any? = null
+    var and: Condition? = null
+
+    override fun build(): Condition = UnaryCondition(conditionType, and, column ?: "")
 }
 
-class GE(left: String?, right: String?, and: Comparison<String?, String?>?): Comparison<String?, String?>(left, right, and)
-class GEBuilder: ComparisonBuilder<String?, String?>() {
-    override fun build(): GE = GE(left, right, and)
+class BinaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
+    var left: Any? = null
+    var right: Any? = null
+    var and: Condition? = null
+
+    override fun build(): Condition = BinaryCondition(conditionType, and, left ?: "", right ?: "")
 }
 
-class LE(left: String?, right: String?, and: Comparison<String?, String?>?): Comparison<String?, String?>(left, right, and)
-class LEBuilder: ComparisonBuilder<String?, String?>() {
-    override fun build(): LE = LE(left, right, and)
+class TernaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
+    var left: Any? = null
+    var right: Any? = null
+    var mid: Any? = null
+    var and: Condition? = null
+
+    override fun build(): Condition = TernaryCondition(conditionType, and, left ?: "", right ?: "", mid ?: "")
 }
 
-class GT(left: String?, right: String?, and: Comparison<String?, String?>?): Comparison<String?, String?>(left, right, and)
-class GTBuilder: ComparisonBuilder<String?, String?>() {
-    override fun build(): GT = GT(left, right, and)
+class UnaryCondition(conditionType: ConditionType, and: Condition? = null, val column: Any) : Condition(conditionType, and) {
+    override fun build(): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
 }
 
-class LT(left: String?, right: String?, and: Comparison<String?, String?>?): Comparison<String?, String?>(left, right, and)
-class LTBuilder: ComparisonBuilder<String?, String?>() {
-    override fun build(): LT = LT(left, right, and)
+class BinaryCondition(conditionType: ConditionType, and: Condition? = null, val left: Any, val right: Any) : Condition(conditionType, and) {
+    override fun build(): String {
+        return "$left ${conditionType.symbol} $right ${if (and != null) "and ${and.build()}" else "" }"
+    }
 }
 
-class LIKE(left: String?, right: String?, and: Comparison<String?, String?>?): Comparison<String?, String?>(left, right, and)
-class LIKEBuilder: ComparisonBuilder<String?, String?>() {
-    override fun build(): LIKE = LIKE(left, right, and)
+class TernaryCondition(conditionType: ConditionType, and: Condition? = null, val left: Any, val right: Any, val mid: Any) : Condition(conditionType, and) {
+    override fun build(): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
 }
 
-class IN(left: String?, right: String?, and: Comparison<String?, String?>?): Comparison<String?, String?>(left, right, and)
-class INBuilder: ComparisonBuilder<String?, String?>() {
-    override fun build(): IN = IN(left, right, and)
-}
+fun eq(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.EQ).apply(block).build()
 
-class BETWEEN(left: String?, right: String?, and: Comparison<String?, String?>?): Comparison<String?, String?>(left, right, and)
-class BETWEENBuilder: ComparisonBuilder<String?, String?>() {
-    override fun build(): BETWEEN = BETWEEN(left, right, and)
-}
+fun ge(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.GE).apply(block).build()
 
+fun le(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.LE).apply(block).build()
 
-fun eq(block: EQBuilder.() -> Unit): EQ = EQBuilder().apply(block).build()
+fun gt(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.GT).apply(block).build()
 
-fun ge(block: GEBuilder.() -> Unit): GE = GEBuilder().apply(block).build()
+fun lt(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.LT).apply(block).build()
 
-fun le(block: LEBuilder.() -> Unit): LE = LEBuilder().apply(block).build()
+fun like(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.LIKE).apply(block).build()
 
-fun gt(block: GTBuilder.() -> Unit): GT = GTBuilder().apply(block).build()
-
-fun lt(block: LTBuilder.() -> Unit): LT = LTBuilder().apply(block).build()
+fun in_(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.IN).apply(block).build()
