@@ -156,60 +156,71 @@ class DESCBuilder : OrderingBuilder<String?>() {
 }
 
 enum class ConditionType(val symbol: String) {
-    EQ("="), GE(">="), LE("<="), GT(">"), LT("<"), LIKE("LIKE"), IN("IN"), IS_NULL("IS NULL"), IS_NOT_NULL("IS NOT NULL"), NOT("NOT")
+    EQ("="), GE(">="), LE("<="), GT(">"), LT("<"), LIKE("LIKE"), IN("IN"), IS_NULL("IS NULL"), IS_NOT_NULL("IS NOT NULL"),
+    NOT("NOT"), OR("OR"), AND("AND")
 }
 
-abstract class Condition(val conditionType: ConditionType, val and: Condition? = null) : Clause
+abstract class Condition(val conditionType: ConditionType) : Clause
 
-class WrapperConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
+class UnaryWrapperConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
     lateinit var condition: Condition
 
-    override fun build(): Condition = WrapperCondition(conditionType, condition)
+    override fun build(): Condition = UnaryWrapperCondition(conditionType, condition)
+}
+
+class BinaryWrapperConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
+    lateinit var first: Condition
+    lateinit var second: Condition
+
+    override fun build(): Condition = BinaryWrapperCondition(conditionType, first, second)
 }
 
 class UnaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
     lateinit var column: Any
-    var and: Condition? = null
 
-    override fun build(): Condition = UnaryCondition(conditionType, and, column)
+    override fun build(): Condition = UnaryCondition(conditionType, column)
 }
 
 class BinaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
     lateinit var left: Any
     lateinit var right: Any
-    var and: Condition? = null
 
-    override fun build(): Condition = BinaryCondition(conditionType, and, left, right)
+    override fun build(): Condition = BinaryCondition(conditionType, left, right)
 }
 
 class TernaryConditionBuilder(val conditionType: ConditionType) : ClauseBuilder<Condition> {
     lateinit var left: Any
     lateinit var right: Any
     lateinit var mid: Any
-    var and: Condition? = null
 
-    override fun build(): Condition = TernaryCondition(conditionType, and, left, right, mid)
+    override fun build(): Condition = TernaryCondition(conditionType, left, right, mid)
 }
 
-class WrapperCondition(conditionType: ConditionType, val condition: Condition): Condition(conditionType) {
+class UnaryWrapperCondition(conditionType: ConditionType, val condition: Condition): Condition(conditionType) {
     override fun build(): String {
         return "${conditionType.symbol} ${condition.build()}"
     }
 }
 
-class UnaryCondition(conditionType: ConditionType, and: Condition? = null, val column: Any) : Condition(conditionType, and) {
+class BinaryWrapperCondition(conditionType: ConditionType, val first: Condition, val second: Condition): Condition(conditionType) {
     override fun build(): String {
-        return "$column ${conditionType.symbol} ${if (and != null) "AND ${and.build()}" else "" }"
+        return "${first.build()} ${conditionType.symbol} ${second.build()}"
     }
 }
 
-class BinaryCondition(conditionType: ConditionType, and: Condition? = null, val left: Any, val right: Any) : Condition(conditionType, and) {
+class UnaryCondition(conditionType: ConditionType, val column: Any) : Condition(conditionType) {
     override fun build(): String {
-        return "$left ${conditionType.symbol} $right ${if (and != null) "AND ${and.build()}" else "" }"
+        return "$column ${conditionType.symbol}"
     }
 }
 
-class TernaryCondition(conditionType: ConditionType, and: Condition? = null, val left: Any, val right: Any, val mid: Any) : Condition(conditionType, and) {
+class BinaryCondition(conditionType: ConditionType, val left: Any, val right: Any) : Condition(conditionType) {
+    override fun build(): String {
+        return "$left ${conditionType.symbol} $right"
+    }
+}
+
+class TernaryCondition(conditionType: ConditionType, val left: Any, val right: Any, val mid: Any) : Condition(conditionType) {
     override fun build(): String {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
@@ -219,7 +230,11 @@ fun isNull(block: UnaryConditionBuilder.() -> Unit): Condition = UnaryConditionB
 
 fun isNotNull(block: UnaryConditionBuilder.() -> Unit): Condition = UnaryConditionBuilder(ConditionType.IS_NOT_NULL).apply(block).build()
 
-fun not(block: WrapperConditionBuilder.() -> Unit): Condition = WrapperConditionBuilder(ConditionType.NOT).apply(block).build()
+fun not(block: UnaryWrapperConditionBuilder.() -> Unit): Condition = UnaryWrapperConditionBuilder(ConditionType.NOT).apply(block).build()
+
+fun or(block: BinaryWrapperConditionBuilder.() -> Unit): Condition = BinaryWrapperConditionBuilder(ConditionType.OR).apply(block).build()
+
+fun and(block: BinaryWrapperConditionBuilder.() -> Unit): Condition = BinaryWrapperConditionBuilder(ConditionType.AND).apply(block).build()
 
 fun eq(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.EQ).apply(block).build()
 
