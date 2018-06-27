@@ -74,7 +74,7 @@ class Alter {}
 class From<A : Statement>(val query: A, val schema: String?, val table: String) : ForwardStatement<A>(query) {
     constructor(query: A, table: String) : this(query, null, table)
 
-    private var where: Array<out Condition>? = null
+    private var where: Condition? = null
 
     fun innerJoin(schema: String? = null, table: String): Join<A> = Join(this, schema, table, JoinType.INNER)
 
@@ -84,14 +84,14 @@ class From<A : Statement>(val query: A, val schema: String?, val table: String) 
 
     fun fullJoin(schema: String? = null, table: String): Join<A> = Join(this, schema, table, JoinType.FULL)
 
-    fun where(vararg condition: Condition): A {
+    fun where(condition: Condition): A {
         where = condition
 
         return query
     }
 
     override fun build(): String {
-        return "FROM ${if (schema != null) schema + '.' else ""}$table ${if (where != null) "WHERE ${where!!.map { b -> "(${b.build()})" }.joinToString(separator = " OR ")}" else ""}"
+        return "FROM ${if (schema != null) schema + '.' else ""}$table ${if (where != null) "WHERE ${where!!.build()}" else ""}"
     }
 }
 
@@ -204,7 +204,7 @@ class UnaryWrapperCondition(conditionType: ConditionType, val condition: Conditi
 
 class BinaryWrapperCondition(conditionType: ConditionType, val first: Condition, val second: Condition): Condition(conditionType) {
     override fun build(): String {
-        return "${first.build()} ${conditionType.symbol} ${second.build()}"
+        return "(${first.build()} ${conditionType.symbol} ${second.build()})"
     }
 }
 
