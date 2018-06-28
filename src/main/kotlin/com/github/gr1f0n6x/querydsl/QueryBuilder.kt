@@ -1,7 +1,5 @@
 package com.github.gr1f0n6x.querydsl
 
-import sun.reflect.CallerSensitive
-
 internal fun escapedValue(value: Any): Any {
     return value
 }
@@ -10,19 +8,47 @@ internal fun caseSensitiveName(objectName: String): String {
     return """"$objectName""""
 }
 
-data class Column(val name: String, val alias: String? = null, val caseSensitive: Boolean = false) {
+abstract class Value {
+    protected var alias: String? = null
+
+    infix fun aS(alias: String): Value = this.apply { this.alias = alias }
+
+    infix fun eq(value: Value): Condition = BinaryConditionBuilder(ConditionType.EQ).apply { left = this@Value; right = value }.build()
+
+    infix fun ge(value: Value): Condition = BinaryConditionBuilder(ConditionType.GE).apply { left = this@Value; right = value }.build()
+
+    infix fun le(value: Value): Condition = BinaryConditionBuilder(ConditionType.LE).apply { left = this@Value; right = value }.build()
+
+    infix fun gt(value: Value): Condition = BinaryConditionBuilder(ConditionType.GT).apply { left = this@Value; right = value }.build()
+
+    infix fun lt(value: Value): Condition = BinaryConditionBuilder(ConditionType.LT).apply { left = this@Value; right = value }.build()
+
+    infix fun iS(value: Value): Condition = BinaryConditionBuilder(ConditionType.IS).apply { left = this@Value; right = value }.build()
+
+    infix fun iSNot(value: Value): Condition = BinaryConditionBuilder(ConditionType.IS_NOT).apply { left = this@Value; right = value }.build()
+
+    infix fun like(value: Value): Condition = BinaryConditionBuilder(ConditionType.LIKE).apply { left = this@Value; right = value }.build()
+
+    infix fun iN(value: Value): Condition = BinaryConditionBuilder(ConditionType.IN).apply { left = this@Value; right = value }.build()
+}
+
+object NULL : Value() {
+    override fun toString(): String = "NULL"
+}
+
+data class Column(val name: String, val tableAlias: String? = null, val caseSensitive: Boolean = false) : Value() {
     override fun toString(): String {
         if (caseSensitive) {
-            return "${if (alias != null) "$alias." else ""}${caseSensitiveName(name)}"
+            return "${if (tableAlias != null) "$tableAlias." else ""}${caseSensitiveName(name)}"
         }
 
-        return "${if (alias != null) "$alias." else ""}$name"
+        return "${if (tableAlias != null) "$tableAlias." else ""}$name${if (alias != null) " as $alias" else ""}"
     }
 }
 
-data class Literal(val literal: Any) {
+data class Literal(val literal: Any) : Value() {
     override fun toString(): String {
-        return "${escapedValue(literal)}"
+        return "${escapedValue(literal)}${if (alias != null) " as $alias" else ""}"
     }
 }
 
@@ -62,6 +88,8 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
     private var from: From<Select>? = null
     private var limit: Int? = null
     private var groupBy: Array<out Column>? = null
+    private var orderBy: Array<out Order>? = null
+    //TODO: having
 
     fun from(schema: String? = null, table: String, alias: String? = null): From<Select> {
         if (this.from != null) {
@@ -73,7 +101,7 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
         return from as From<Select>
     }
 
-    fun groupBy(vararg columns: Column): Statement {
+    fun groupBy(vararg columns: Column): Select {
         if (this.groupBy != null) {
             throw RuntimeException("Group by part is already defined")
         }
@@ -97,9 +125,20 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
         return this
     }
 
+    fun orderBy(vararg order: Order): Select {
+        if (this.orderBy != null) {
+            throw RuntimeException("Order by part is already defined")
+        }
+
+        this.orderBy = order
+
+        return this
+    }
+
     override fun build(): String {
         return "SELECT ${columns.joinToString(separator = ", ")} ${from!!.build()}" +
                 " ${if (groupBy != null) "GROUP BY ${groupBy!!.joinToString(separator = ", ")}" else ""}" +
+                " ${if (orderBy != null) "ORDER BY ${orderBy!!.map { x -> x.build() }.joinToString(separator = ", ")}" else ""}" +
                 " ${if (limit != null) "LIMIT $limit" else ""}"
     }
 }
@@ -190,41 +229,64 @@ interface ClauseBuilder<out T : Clause> {
     fun build(): T
 }
 
-abstract class Aggregation<A>(private val column: A) : Clause
-
-abstract class Ordering<A>(private val column: A) : Clause
-abstract class OrderingBuilder<A> : ClauseBuilder<Ordering<A>> {
-    var column: A? = null
+enum class AggregationType(val symbol: String) {
+    COUNT("COUNT"), MAX("MAX"), MIN("MIN"), AVG("AVG")
 }
 
-class ASC(column: String?) : Ordering<String?>(column) {
-    override fun build(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+class Aggregation(private val aggregationType: AggregationType, private val column: Any) : Clause {
+    override fun build(): String = "${aggregationType.symbol}($column)"
 }
 
-class ASCBuilder : OrderingBuilder<String?>() {
-    override fun build(): ASC = ASC(column)
+class AggregationBuilder(private val aggregationType: AggregationType) : ClauseBuilder<Aggregation> {
+    lateinit var column: Any
+
+    override fun build(): Aggregation = Aggregation(aggregationType, column)
 }
 
-class DESC(column: String?) : Ordering<String?>(column) {
-    override fun build(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+fun count(block: AggregationBuilder.() -> Unit): Aggregation = AggregationBuilder(AggregationType.COUNT).apply(block).build()
+
+fun max(block: AggregationBuilder.() -> Unit): Aggregation = AggregationBuilder(AggregationType.MAX).apply(block).build()
+
+fun min(block: AggregationBuilder.() -> Unit): Aggregation = AggregationBuilder(AggregationType.MIN).apply(block).build()
+
+fun avg(block: AggregationBuilder.() -> Unit): Aggregation = AggregationBuilder(AggregationType.AVG).apply(block).build()
+
+enum class OrderType(val symbol: String) {
+    ASC("ASC"), DESC("DESC")
 }
 
-class DESCBuilder : OrderingBuilder<String?>() {
-    override fun build(): DESC = DESC(column)
+class Order(private val orderType: OrderType, private val column: Column) : Clause {
+    override fun build(): String = "$column ${orderType.symbol}"
 }
+
+class OrderBuilder(private val orderType: OrderType) : ClauseBuilder<Order> {
+    lateinit var column: Column
+
+    override fun build(): Order = Order(orderType, column)
+}
+
+fun asc(block: OrderBuilder.() -> Unit): Order = OrderBuilder(OrderType.ASC).apply(block).build()
+
+fun desc(block: OrderBuilder.() -> Unit): Order = OrderBuilder(OrderType.DESC).apply(block).build()
 
 enum class ConditionType(val symbol: String) {
-    EQ("="), GE(">="), LE("<="), GT(">"), LT("<"), LIKE("LIKE"), IN("IN"), IS_NULL("IS NULL"), IS_NOT_NULL("IS NOT NULL"),
-    NOT("NOT"), OR("OR"), AND("AND"), RAW("")
+    EQ("="), GE(">="), LE("<="), GT(">"), LT("<"), LIKE("LIKE"), IN("IN"),
+    NOT("NOT"), OR("OR"), AND("AND"), RAW(""), IS("IS"), IS_NOT("IS NOT")
 }
 
-abstract class Condition(protected val conditionType: ConditionType) : Clause
+abstract class Condition(protected val conditionType: ConditionType) : Clause {
+    infix fun or(condition: Condition): Condition = BinaryWrapperConditionBuilder(ConditionType.OR).apply {
+        first = this@Condition; second = condition
+    }.build()
 
-class RawCondition(private val clause: String): Condition(ConditionType.RAW) {
+    infix fun and(condition: Condition): Condition = BinaryWrapperConditionBuilder(ConditionType.AND).apply {
+        first = this@Condition; second = condition
+    }.build()
+
+    operator fun not(): Condition = UnaryWrapperConditionBuilder(ConditionType.NOT).apply { condition = this@Condition }.build()
+}
+
+class RawCondition(private val clause: String) : Condition(ConditionType.RAW) {
     override fun build(): String = clause
 }
 
@@ -242,22 +304,22 @@ class BinaryWrapperConditionBuilder(private val conditionType: ConditionType) : 
 }
 
 class UnaryConditionBuilder(private val conditionType: ConditionType) : ClauseBuilder<Condition> {
-    lateinit var column: Any
+    lateinit var column: Value
 
     override fun build(): Condition = UnaryCondition(conditionType, column)
 }
 
 class BinaryConditionBuilder(private val conditionType: ConditionType) : ClauseBuilder<Condition> {
-    lateinit var left: Any
-    lateinit var right: Any
+    lateinit var left: Value
+    lateinit var right: Value
 
     override fun build(): Condition = BinaryCondition(conditionType, left, right)
 }
 
 class TernaryConditionBuilder(private val conditionType: ConditionType) : ClauseBuilder<Condition> {
-    lateinit var left: Any
-    lateinit var right: Any
-    lateinit var mid: Any
+    lateinit var left: Value
+    lateinit var right: Value
+    lateinit var mid: Value
 
     override fun build(): Condition = TernaryCondition(conditionType, left, right, mid)
 }
@@ -274,45 +336,20 @@ class BinaryWrapperCondition(conditionType: ConditionType, private val first: Co
     }
 }
 
-class UnaryCondition(conditionType: ConditionType, private val column: Any) : Condition(conditionType) {
+class UnaryCondition(conditionType: ConditionType, private val column: Value) : Condition(conditionType) {
     override fun build(): String {
         return "$column ${conditionType.symbol}"
     }
 }
 
-class BinaryCondition(conditionType: ConditionType, private val left: Any, private val right: Any) : Condition(conditionType) {
+class BinaryCondition(conditionType: ConditionType, private val left: Value, private val right: Value) : Condition(conditionType) {
     override fun build(): String {
         return "$left ${conditionType.symbol} $right"
     }
 }
 
-class TernaryCondition(conditionType: ConditionType, private val left: Any, private val right: Any, private val mid: Any) : Condition(conditionType) {
+class TernaryCondition(conditionType: ConditionType, private val left: Value, private val right: Value, private val mid: Value) : Condition(conditionType) {
     override fun build(): String {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }
-
-fun isNull(block: UnaryConditionBuilder.() -> Unit): Condition = UnaryConditionBuilder(ConditionType.IS_NULL).apply(block).build()
-
-fun isNotNull(block: UnaryConditionBuilder.() -> Unit): Condition = UnaryConditionBuilder(ConditionType.IS_NOT_NULL).apply(block).build()
-
-fun not(block: UnaryWrapperConditionBuilder.() -> Unit): Condition = UnaryWrapperConditionBuilder(ConditionType.NOT).apply(block).build()
-
-fun or(block: BinaryWrapperConditionBuilder.() -> Unit): Condition = BinaryWrapperConditionBuilder(ConditionType.OR).apply(block).build()
-
-fun and(block: BinaryWrapperConditionBuilder.() -> Unit): Condition = BinaryWrapperConditionBuilder(ConditionType.AND).apply(block).build()
-
-fun eq(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.EQ).apply(block).build()
-
-fun ge(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.GE).apply(block).build()
-
-fun le(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.LE).apply(block).build()
-
-fun gt(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.GT).apply(block).build()
-
-fun lt(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.LT).apply(block).build()
-
-// TODO: escape clause
-fun like(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.LIKE).apply(block).build()
-
-fun in_(block: BinaryConditionBuilder.() -> Unit): Condition = BinaryConditionBuilder(ConditionType.IN).apply(block).build()
