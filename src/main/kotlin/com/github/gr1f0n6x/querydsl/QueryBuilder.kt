@@ -8,7 +8,14 @@ internal fun caseSensitiveName(objectName: String): String {
     return """"$objectName""""
 }
 
-abstract class Value {
+interface DSLObject
+
+data class Table(val schema: String? = null, val name: String, val alias: String? = null, val caseSensitive: Boolean = false) : DSLObject {
+    //TODO" case sensitive
+    override fun toString(): String = "${if (schema != null) "$schema." else ""}$name${if (alias != null) " $alias" else ""}"
+}
+
+abstract class Value: DSLObject {
     protected var alias: String? = null
 
     infix fun aS(alias: String): Value = this.apply { this.alias = alias }
@@ -39,7 +46,7 @@ object NULL : Value() {
 data class Column(val name: String, val tableAlias: String? = null, val caseSensitive: Boolean = false) : Value() {
     override fun toString(): String {
         if (caseSensitive) {
-            return "${if (tableAlias != null) "$tableAlias." else ""}${caseSensitiveName(name)}"
+            return "${if (tableAlias != null) "$tableAlias." else ""}${caseSensitiveName(name)}${if (alias != null) " as $alias" else ""}"
         }
 
         return "${if (tableAlias != null) "$tableAlias." else ""}$name${if (alias != null) " as $alias" else ""}"
@@ -151,9 +158,52 @@ class Delete {}
 
 class Create {}
 
-class Truncate {}
+class Truncate : Statement {
+    private var table: Table? = null
 
-class Drop {}
+    fun table(table: Table): Truncate {
+        if (this.table != null) {
+            throw RuntimeException("Table for drop is already defined")
+        }
+
+        this.table = table
+
+        return this
+    }
+
+    override fun build(): String {
+        return "TRUNCATE $table"
+    }
+}
+
+class Drop : Statement {
+    private var table: Table? = null
+    private var cascade: Boolean = false
+
+    fun table(table: Table): Drop {
+        if (this.table != null) {
+            throw RuntimeException("Table for drop is already defined")
+        }
+
+        this.table = table
+
+        return this
+    }
+
+    fun cascade(): Drop {
+        if (this.cascade) {
+            throw RuntimeException("Cascade is already set to true")
+        }
+
+        this.cascade = true
+
+        return this
+    }
+
+    override fun build(): String {
+        return "DROP TABLE $table ${if (cascade) "CASCADE" else "RESTRICT"}"
+    }
+}
 
 class Alter {}
 
