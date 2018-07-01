@@ -4,13 +4,14 @@ internal fun escapedValue(value: Any): Any {
     return value
 }
 
-internal fun caseSensitiveName(objectName: String): String {
-    return """"$objectName""""
-}
-
 data class Table(val schema: String? = null, val name: String, val alias: String? = null, val caseSensitive: Boolean = false) {
-    //TODO" case sensitive
-    override fun toString(): String = "${if (schema != null) "$schema." else ""}$name${if (alias != null) " $alias" else ""}"
+    override fun toString(): String {
+        return if (caseSensitive) {
+            "${if (schema != null) "\"$schema.\"" else ""}\"$name\"${if (alias != null) " $alias" else ""}"
+        } else {
+            "${if (schema != null) "$schema." else ""}$name${if (alias != null) " $alias" else ""}"
+        }
+    }
 }
 
 abstract class Value {
@@ -46,7 +47,7 @@ object NULL : Value() {
 data class Column(val name: String, val tableAlias: String? = null, val caseSensitive: Boolean = false) : Value() {
     override fun toString(): String {
         if (caseSensitive) {
-            return "${if (tableAlias != null) "$tableAlias." else ""}${caseSensitiveName(name)}${if (alias != null) " as $alias" else ""}"
+            return "${if (tableAlias != null) "$tableAlias." else ""}\"$name\"${if (alias != null) " as $alias" else ""}"
         }
 
         return "${if (tableAlias != null) "$tableAlias." else ""}$name${if (alias != null) " as $alias" else ""}"
@@ -98,12 +99,12 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
     private var orderBy: Array<out Order>? = null
     private var having: Condition? = null
 
-    fun from(schema: String? = null, table: String, alias: String? = null): From<Select> {
+    fun from(table: Table): From<Select> {
         if (this.from != null) {
             throw RuntimeException("From part is already defined")
         }
 
-        from = From(this, schema, table, alias)
+        from = From(this, table)
 
         return from as From<Select>
     }
@@ -218,21 +219,21 @@ class Drop : Statement {
 
 class Alter {}
 
-class From<A : Statement>(private val query: A, private val schema: String? = null, private val table: String, private val alias: String? = null) : ForwardStatement<A>(query) {
+class From<A : Statement>(private val query: A, private val table: Table) : ForwardStatement<A>(query) {
 
     private var joins: MutableList<Join<A>> = mutableListOf()
     private var where: Condition? = null
 
-    fun innerJoin(schema: String? = null, table: String, alias: String? = null): Join<A> = createJoin(schema, table, alias, JoinType.INNER)
+    fun innerJoin(table: Table): Join<A> = createJoin(table, JoinType.INNER)
 
-    fun leftJoin(schema: String? = null, table: String, alias: String? = null): Join<A> = createJoin(schema, table, alias, JoinType.LEFT)
+    fun leftJoin(table: Table): Join<A> = createJoin(table, JoinType.LEFT)
 
-    fun rightJoin(schema: String? = null, table: String, alias: String? = null): Join<A> = createJoin(schema, table, alias, JoinType.RIGHT)
+    fun rightJoin(table: Table): Join<A> = createJoin(table, JoinType.RIGHT)
 
-    fun fullJoin(schema: String? = null, table: String, alias: String? = null): Join<A> = createJoin(schema, table, alias, JoinType.FULL)
+    fun fullJoin(table: Table): Join<A> = createJoin(table, JoinType.FULL)
 
-    private fun createJoin(schema: String? = null, table: String, alias: String? = null, joinType: JoinType): Join<A> {
-        val join = Join(this, schema, table, alias, joinType)
+    private fun createJoin(table: Table, joinType: JoinType): Join<A> {
+        val join = Join(this, table, joinType)
         joins.add(join)
 
         return join
@@ -250,7 +251,7 @@ class From<A : Statement>(private val query: A, private val schema: String? = nu
         return query
     }
 
-    override fun build(): String = "FROM ${if (schema != null) "$schema." else ""}$table ${alias ?: ""}" +
+    override fun build(): String = "FROM $table" +
             " ${if (joins.isNotEmpty()) "\n${joins.map { x -> x.build() }.joinToString(separator = "\n")}" else ""}" +
             " ${if (where != null) "\nWHERE ${where!!.build()}" else ""}"
 }
@@ -259,7 +260,7 @@ enum class JoinType(val type: String) {
     INNER("INNER JOIN"), LEFT("LEFT JOIN"), RIGHT("RIGHT JOIN"), FULL("FULL JOIN")
 }
 
-class Join<A : Statement>(private val clause: From<A>, private val schema: String? = null, private val table: String, private val alias: String? = null, private val joinType: JoinType) : ForwardStatement<From<A>>(clause) {
+class Join<A : Statement>(private val clause: From<A>, private val table: Table, private val joinType: JoinType) : ForwardStatement<From<A>>(clause) {
 
     private lateinit var condition: Condition
 
@@ -275,7 +276,7 @@ class Join<A : Statement>(private val clause: From<A>, private val schema: Strin
         return clause
     }
 
-    override fun build(): String = "${joinType.type} ${if (schema != null) "$schema." else ""}$table ${alias ?: ""} ON ${condition.build()}"
+    override fun build(): String = "${joinType.type} $table ON ${condition.build()}"
 }
 
 enum class QueryType {
