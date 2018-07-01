@@ -12,6 +12,14 @@ data class Table(val schema: String? = null, val name: String, val alias: String
             "${if (schema != null) "$schema." else ""}$name${if (alias != null) " $alias" else ""}"
         }
     }
+
+    internal fun forInsert(): String {
+        return if (caseSensitive) {
+            "${if (schema != null) "\"$schema.\"" else ""}\"$name\""
+        } else {
+            "${if (schema != null) "$schema." else ""}$name"
+        }
+    }
 }
 
 abstract class Value {
@@ -40,40 +48,65 @@ abstract class Value {
     infix fun iN(value: Value): Condition = BinaryConditionBuilder(ConditionType.IN).apply { left = this@Value; right = value }.build()
 }
 
-object NULL : Value() {
+object NULL : Literal("NULL") {
     override fun toString(): String = "NULL"
 }
 
 data class Column(val name: String, val tableAlias: String? = null, val caseSensitive: Boolean = false) : Value() {
     override fun toString(): String {
-        if (caseSensitive) {
-            return "${if (tableAlias != null) "$tableAlias." else ""}\"$name\"${if (alias != null) " as $alias" else ""}"
+        return if (caseSensitive) {
+            "${if (tableAlias != null) "$tableAlias." else ""}\"$name\"${if (alias != null) " as $alias" else ""}"
+        } else {
+            "${if (tableAlias != null) "$tableAlias." else ""}$name${if (alias != null) " as $alias" else ""}"
         }
+    }
 
-        return "${if (tableAlias != null) "$tableAlias." else ""}$name${if (alias != null) " as $alias" else ""}"
+    internal fun forInsert(): String {
+        return if (caseSensitive) {
+            "\"$name\""
+        } else {
+            name
+        }
     }
 }
 
-data class Literal(val literal: Any) : Value() {
+//TODO: add basic literal types (numeric, char, varchar, etc.)  https://msdn.microsoft.com/en-us/library/office/ff195814.aspx
+// Make this class abstract (or add implicit type conversion to concrete type?)
+open class Literal(val literal: Any) : Value() {
     override fun toString(): String {
         return "${escapedValue(literal)}${if (alias != null) " as $alias" else ""}"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Literal
+
+        if (literal != other.literal) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return literal.hashCode()
     }
 }
 
 object QueryBuilder {
     fun select(vararg columns: Any): Select = Select(*columns)
 
-    fun update(): Update = Update()
+    fun update(table: Table): Update = Update(table)
 
-    fun insert(): Insert = Insert()
+    fun insert(table: Table): Insert = Insert(table)
 
-    fun delete(): Delete = Delete()
+    fun delete(table: Table): Delete = Delete(table)
 
     fun create(): Create = Create()
 
-    fun truncate(): Truncate = Truncate()
+    fun truncate(table: Table): Truncate = Truncate(table)
 
-    fun drop(): Drop = Drop()
+    fun drop(table: Table): Drop = Drop(table)
 
     fun alter(): Alter = Alter()
 }
@@ -162,45 +195,93 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
     }
 }
 
-class Update {}
+class Update(val table: Table) : Statement {
+    private var condition: Condition? = null
+    private val updates: MutableMap<Column, Value> = mutableMapOf()
 
-class Insert {}
-
-class Delete {}
-
-class Create {}
-
-class Truncate : Statement {
-    private var table: Table? = null
-
-    fun table(table: Table): Truncate {
-        if (this.table != null) {
-            throw RuntimeException("Table for drop is already defined")
+    fun where(condition: Condition): Update {
+        if (this.condition != null) {
+            throw RuntimeException("Condition for update is already defined")
         }
 
-        this.table = table
+        this.condition = condition
+
+        return this
+    }
+
+    fun set(column: Column, newValue: Column): Update {
+        updates.put(column, newValue)
+
+        return this
+    }
+
+    fun set(column: Column, newValue: Literal): Update {
+        updates.put(column, newValue)
 
         return this
     }
 
     override fun build(): String {
+        if (updates.isEmpty()) {
+            throw RuntimeException("There is no specified columns for update")
+        }
+
+        return "UPDATE $table " +
+                "SET ${updates.map { x -> "${x.key} = ${x.value}" }.joinToString(separator = ", ")}" +
+                " ${if (condition != null) "WHERE ${condition!!.build()}" else ""}"
+    }
+}
+
+class Insert(val table: Table) : Statement {
+    private var columnLst: Array<out Column>? = null
+    private var values: List<out Literal> = emptyList()
+
+    fun columns(vararg columns: Column): Insert {
+        columnLst = columns
+
+        return this
+    }
+
+    fun values(vararg values: Literal): Insert {
+        this.values = values.asList()
+
+        return this
+    }
+
+    override fun build(): String {
+        if (columnLst != null) {
+            if (columnLst!!.size > values.size) {
+                values = values.plus(Array(columnLst!!.size - values.size, { NULL }))
+            }
+
+            if (columnLst!!.size < values.size) {
+                throw RuntimeException("Values list for update is bigger than columns")
+            }
+        }
+
+
+        return "INSERT INTO ${table.forInsert()}" +
+                "${if (columnLst!!.isNotEmpty()) "(${columnLst!!.map { x -> x.forInsert() }.joinToString(separator = ", ")})" else ""} " +
+                "VALUES(${values.joinToString(separator = ", ")})"
+    }
+}
+
+class Delete(val table: Table) : Statement {
+    override fun build(): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+}
+
+class Create {}
+
+class Truncate(val table: Table) : Statement {
+    override fun build(): String {
         return "TRUNCATE $table"
     }
 }
 
-class Drop : Statement {
-    private var table: Table? = null
+class Drop(val table: Table) : Statement {
     private var cascade: Boolean = false
-
-    fun table(table: Table): Drop {
-        if (this.table != null) {
-            throw RuntimeException("Table for drop is already defined")
-        }
-
-        this.table = table
-
-        return this
-    }
 
     fun cascade(): Drop {
         if (this.cascade) {
