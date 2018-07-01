@@ -8,15 +8,15 @@ internal fun caseSensitiveName(objectName: String): String {
     return """"$objectName""""
 }
 
-interface DSLObject
-
-data class Table(val schema: String? = null, val name: String, val alias: String? = null, val caseSensitive: Boolean = false) : DSLObject {
+data class Table(val schema: String? = null, val name: String, val alias: String? = null, val caseSensitive: Boolean = false) {
     //TODO" case sensitive
     override fun toString(): String = "${if (schema != null) "$schema." else ""}$name${if (alias != null) " $alias" else ""}"
 }
 
-abstract class Value: DSLObject {
+abstract class Value {
     protected var alias: String? = null
+
+    fun between(lower: Value, upper: Value): Condition = TernaryConditionBuilder(ConditionType.BETWEEN).apply { left = lower; mid = this@Value; right = upper }.build()
 
     infix fun aS(alias: String): Value = this.apply { this.alias = alias }
 
@@ -96,7 +96,7 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
     private var limit: Int? = null
     private var groupBy: Array<out Column>? = null
     private var orderBy: Array<out Order>? = null
-    //TODO: having
+    private var having: Condition? = null
 
     fun from(schema: String? = null, table: String, alias: String? = null): From<Select> {
         if (this.from != null) {
@@ -142,9 +142,20 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
         return this
     }
 
+    fun having(condition: Condition): Select {
+        if (this.having != null) {
+            throw RuntimeException("Having part is already defined")
+        }
+
+        this.having = condition
+
+        return this
+    }
+
     override fun build(): String {
         return "SELECT ${columns.joinToString(separator = ", ")} ${from!!.build()}" +
                 " ${if (groupBy != null) "GROUP BY ${groupBy!!.joinToString(separator = ", ")}" else ""}" +
+                " ${if (having != null) "HAVING ${having!!.build()}" else ""}" +
                 " ${if (orderBy != null) "ORDER BY ${orderBy!!.map { x -> x.build() }.joinToString(separator = ", ")}" else ""}" +
                 " ${if (limit != null) "LIMIT $limit" else ""}"
     }
@@ -239,11 +250,9 @@ class From<A : Statement>(private val query: A, private val schema: String? = nu
         return query
     }
 
-    override fun build(): String {
-        return "FROM ${if (schema != null) "$schema." else ""}$table ${alias ?: ""}" +
-                " ${if (joins.isNotEmpty()) "\n${joins.map { x -> x.build() }.joinToString(separator = "\n")}" else ""}" +
-                " ${if (where != null) "\nWHERE ${where!!.build()}" else ""}"
-    }
+    override fun build(): String = "FROM ${if (schema != null) "$schema." else ""}$table ${alias ?: ""}" +
+            " ${if (joins.isNotEmpty()) "\n${joins.map { x -> x.build() }.joinToString(separator = "\n")}" else ""}" +
+            " ${if (where != null) "\nWHERE ${where!!.build()}" else ""}"
 }
 
 enum class JoinType(val type: String) {
@@ -266,9 +275,7 @@ class Join<A : Statement>(private val clause: From<A>, private val schema: Strin
         return clause
     }
 
-    override fun build(): String {
-        return "${joinType.type} ${if (schema != null) "$schema." else ""}$table ${alias ?: ""} ON ${condition.build()}"
-    }
+    override fun build(): String = "${joinType.type} ${if (schema != null) "$schema." else ""}$table ${alias ?: ""} ON ${condition.build()}"
 }
 
 enum class QueryType {
@@ -283,8 +290,10 @@ enum class AggregationType(val symbol: String) {
     COUNT("COUNT"), MAX("MAX"), MIN("MIN"), AVG("AVG")
 }
 
-class Aggregation(private val aggregationType: AggregationType, private val column: Any) : Clause {
+class Aggregation(private val aggregationType: AggregationType, private val column: Any) : Value(), Clause {
     override fun build(): String = "${aggregationType.symbol}($column)"
+
+    override fun toString(): String = this.build()
 }
 
 class AggregationBuilder(private val aggregationType: AggregationType) : ClauseBuilder<Aggregation> {
@@ -321,17 +330,13 @@ fun desc(block: OrderBuilder.() -> Unit): Order = OrderBuilder(OrderType.DESC).a
 
 enum class ConditionType(val symbol: String) {
     EQ("="), GE(">="), LE("<="), GT(">"), LT("<"), LIKE("LIKE"), IN("IN"),
-    NOT("NOT"), OR("OR"), AND("AND"), RAW(""), IS("IS"), IS_NOT("IS NOT")
+    NOT("NOT"), OR("OR"), AND("AND"), RAW(""), IS("IS"), IS_NOT("IS NOT"), BETWEEN("BETWEEN")
 }
 
 abstract class Condition(protected val conditionType: ConditionType) : Clause {
-    infix fun or(condition: Condition): Condition = BinaryWrapperConditionBuilder(ConditionType.OR).apply {
-        first = this@Condition; second = condition
-    }.build()
+    infix fun or(condition: Condition): Condition = BinaryWrapperConditionBuilder(ConditionType.OR).apply { first = this@Condition; second = condition }.build()
 
-    infix fun and(condition: Condition): Condition = BinaryWrapperConditionBuilder(ConditionType.AND).apply {
-        first = this@Condition; second = condition
-    }.build()
+    infix fun and(condition: Condition): Condition = BinaryWrapperConditionBuilder(ConditionType.AND).apply { first = this@Condition; second = condition }.build()
 
     operator fun not(): Condition = UnaryWrapperConditionBuilder(ConditionType.NOT).apply { condition = this@Condition }.build()
 }
@@ -375,31 +380,21 @@ class TernaryConditionBuilder(private val conditionType: ConditionType) : Clause
 }
 
 class UnaryWrapperCondition(conditionType: ConditionType, private val condition: Condition) : Condition(conditionType) {
-    override fun build(): String {
-        return "${conditionType.symbol} ${condition.build()}"
-    }
+    override fun build(): String = "${conditionType.symbol} ${condition.build()}"
 }
 
 class BinaryWrapperCondition(conditionType: ConditionType, private val first: Condition, private val second: Condition) : Condition(conditionType) {
-    override fun build(): String {
-        return "(${first.build()} ${conditionType.symbol} ${second.build()})"
-    }
+    override fun build(): String = "(${first.build()} ${conditionType.symbol} ${second.build()})"
 }
 
 class UnaryCondition(conditionType: ConditionType, private val column: Value) : Condition(conditionType) {
-    override fun build(): String {
-        return "$column ${conditionType.symbol}"
-    }
+    override fun build(): String = "$column ${conditionType.symbol}"
 }
 
 class BinaryCondition(conditionType: ConditionType, private val left: Value, private val right: Value) : Condition(conditionType) {
-    override fun build(): String {
-        return "$left ${conditionType.symbol} $right"
-    }
+    override fun build(): String = "$left ${conditionType.symbol} $right"
 }
 
 class TernaryCondition(conditionType: ConditionType, private val left: Value, private val right: Value, private val mid: Value) : Condition(conditionType) {
-    override fun build(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun build(): String = "$mid ${conditionType.symbol} $left AND $right"
 }
