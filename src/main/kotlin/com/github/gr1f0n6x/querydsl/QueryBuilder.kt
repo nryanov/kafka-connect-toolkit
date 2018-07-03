@@ -28,7 +28,15 @@ data class Table(val schema: String? = null, val name: String, val caseSensitive
     infix fun aS(alias: String): Table = this.apply { this.alias = alias }
 }
 
-data class Index(val schema: String? = null, val name: String)
+data class Index(val schema: String? = null, val name: String, val caseSensitive: Boolean = false) {
+    internal fun forAction(): String {
+        return if (caseSensitive) {
+            "${if (schema != null) "\"$schema.\"" else ""}\"$name\""
+        } else {
+            "${if (schema != null) "$schema." else ""}$name"
+        }
+    }
+}
 
 abstract class Value {
     protected var alias: String? = null
@@ -118,7 +126,7 @@ abstract class DataType {
         override fun definition(): String = "TIMESTAMP"
     }
 
-    class DECIMAL(val precision: Int = 18, val scale: Int?) : DataType() {
+    class DECIMAL(val precision: Int = 18, val scale: Int? = null) : DataType() {
         override fun definition(): String = "DECIMAL($precision${if (scale != null) ", $scale" else ""})"
     }
 
@@ -194,7 +202,7 @@ object QueryBuilder {
 
     fun truncate(table: Table): Truncate = Truncate(table)
 
-    fun drop(table: Table): Drop = Drop(table)
+    fun drop(): Drop = Drop()
 
     fun alter(): Alter = Alter()
 }
@@ -451,25 +459,51 @@ open class Truncate(val table: Table) : Statement {
     }
 }
 
-open class Drop(val table: Table) : Statement {
-    private var cascade: Boolean = false
+open class Drop {
+    fun table(table: Table): DropTable = DropTable(table)
 
-    fun cascade(): Drop {
-        if (this.cascade) {
-            throw RuntimeException("Cascade is already set to true")
-        }
+    fun index(index: Index): DropIndex = DropIndex(index)
 
-        this.cascade = true
-
-        return this
+    open inner class DropIndex(private val index: Index): Statement {
+        override fun build(): String = "DROP INDEX ${index.forAction()}"
     }
 
-    override fun build(): String {
-        return "DROP TABLE $table ${if (cascade) "CASCADE" else "RESTRICT"}"
+    open inner class DropTable(private val table: Table): Statement {
+        private var cascade: Boolean = false
+
+        fun cascade(): DropTable {
+            if (this.cascade) {
+                throw RuntimeException("Cascade is already set to true")
+            }
+
+            this.cascade = true
+
+            return this
+        }
+
+        override fun build(): String {
+            return "DROP TABLE $table ${if (cascade) "CASCADE" else "RESTRICT"}"
+        }
     }
 }
 
-open class Alter {}
+open class Alter {
+    fun table(table: Table): AlterTable = AlterTable(table)
+
+    open inner class AlterTable(private val table: Table) {
+        fun addColumn(name: String, type: DataType) = object : Statement {
+            override fun build(): String = "ALTER TABLE ${table.forAction()} ADD $name ${type.definition()}"
+        }
+
+        fun alterColumn(name: String, type: DataType) = object : Statement {
+            override fun build(): String = "ALTER TABLE ${table.forAction()} ALTER COLUMN $name ${type.definition()}"
+        }
+
+        fun dropColumn(name: String) = object : Statement {
+            override fun build(): String = "ALTER TABLE ${table.forAction()} DROP COLUMN $name"
+        }
+    }
+}
 
 class From<A : Statement>(private val query: A, private val table: Table) : ForwardStatement<A>(query) {
 
