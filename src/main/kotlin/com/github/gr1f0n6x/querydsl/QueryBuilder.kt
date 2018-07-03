@@ -1,10 +1,14 @@
 package com.github.gr1f0n6x.querydsl
 
+import java.util.Date
+
 internal fun escapedValue(value: Any): Any {
     return value
 }
 
-data class Table(val schema: String? = null, val name: String, val alias: String? = null, val caseSensitive: Boolean = false) {
+data class Table(val schema: String? = null, val name: String, val caseSensitive: Boolean = false) {
+    private var alias: String? = null
+
     override fun toString(): String {
         return if (caseSensitive) {
             "${if (schema != null) "\"$schema.\"" else ""}\"$name\"${if (alias != null) " $alias" else ""}"
@@ -13,14 +17,18 @@ data class Table(val schema: String? = null, val name: String, val alias: String
         }
     }
 
-    internal fun forInsert(): String {
+    internal fun forAction(): String {
         return if (caseSensitive) {
             "${if (schema != null) "\"$schema.\"" else ""}\"$name\""
         } else {
             "${if (schema != null) "$schema." else ""}$name"
         }
     }
+
+    infix fun aS(alias: String): Table = this.apply { this.alias = alias }
 }
+
+data class Index(val schema: String? = null, val name: String)
 
 abstract class Value {
     protected var alias: String? = null
@@ -61,7 +69,7 @@ data class Column(val name: String, val tableAlias: String? = null, val caseSens
         }
     }
 
-    internal fun forInsert(): String {
+    internal fun forAction(): String {
         return if (caseSensitive) {
             "\"$name\""
         } else {
@@ -70,9 +78,7 @@ data class Column(val name: String, val tableAlias: String? = null, val caseSens
     }
 }
 
-//TODO: add basic literal types (numeric, char, varchar, etc.)  https://msdn.microsoft.com/en-us/library/office/ff195814.aspx
-// Make this class abstract (or add implicit type conversion to concrete type?)
-open class Literal(val literal: Any) : Value() {
+abstract class Literal(val literal: Any) : Value() {
     override fun toString(): String {
         return "${escapedValue(literal)}${if (alias != null) " as $alias" else ""}"
     }
@@ -92,6 +98,88 @@ open class Literal(val literal: Any) : Value() {
         return literal.hashCode()
     }
 }
+
+abstract class DataType {
+    abstract fun definition(): String
+
+    class BIT : DataType() { // 0, 1, NULL
+        override fun definition(): String = "BIT"
+    }
+
+    class DATE : DataType() {
+        override fun definition(): String = "DATE"
+    }
+
+    class TIME : DataType() {
+        override fun definition(): String = "TIME"
+    }
+
+    class TIMESTAMP : DataType() {
+        override fun definition(): String = "TIMESTAMP"
+    }
+
+    class DECIMAL(val precision: Int = 18, val scale: Int?) : DataType() {
+        override fun definition(): String = "DECIMAL($precision${if (scale != null) ", $scale" else ""})"
+    }
+
+    class REAL : DataType() {
+        override fun definition(): String = "REAL"
+    }
+
+    class FLOAT(val bitSize: Int = 53) : DataType() {
+        override fun definition(): String = "FLOAT($bitSize"
+    }
+
+    class SMALLINT : DataType() {
+        override fun definition(): String = "SMALLINT"
+    }
+
+    class INTEGER : DataType() {
+        override fun definition(): String = "INTEGER"
+    }
+
+    class CHAR(val size: Int = 1) : DataType() {
+        override fun definition(): String = "CHAR($size)"
+    }
+
+    class NCHAR(val size: Int = 1) : DataType() {
+        override fun definition(): String = "NCHAR($size)"
+    }
+
+    class VARCHAR(val size: Int = 1) : DataType() {
+        override fun definition(): String = "VARCHAR($size)"
+    }
+
+    class NVARCHAR(val size: Int = 1) : DataType() {
+        override fun definition(): String = "NVARCHAR($size)"
+    }
+}
+
+class BIT(val value: Int) : Literal(value)
+
+class DATE(val value: Date) : Literal(value)
+
+class TIME(val value: Date) : Literal(value)
+
+class TIMESTAMP(val value: Date) : Literal(value)
+
+class DECIMAL(val value: Long) : Literal(value)
+
+class REAL(val value: Float) : Literal(value)
+
+class FLOAT(val value: Double) : Literal(value)
+
+class SMALLINT(val value: Short) : Literal(value)
+
+class INTEGER(val value: Int) : Literal(value)
+
+class CHAR(val value: String = "") : Literal(value)
+
+class NCHAR(val value: String = "") : Literal(value)
+
+class VARCHAR(val value: String = "") : Literal(value)
+
+class NVARCHAR(val value: String = "") : Literal(value)
 
 object QueryBuilder {
     fun select(vararg columns: Any): Select = Select(*columns)
@@ -125,7 +213,7 @@ interface Statement : Clause
 
 abstract class ForwardStatement<out T : Statement>(private val statement: T) : Statement
 
-class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
+open class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
     private var from: From<Select>? = null
     private var limit: Int? = null
     private var groupBy: Array<out Column>? = null
@@ -195,7 +283,7 @@ class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
     }
 }
 
-class Update(val table: Table) : Statement {
+open class Update(val table: Table) : Statement {
     private var condition: Condition? = null
     private val updates: MutableMap<Column, Value> = mutableMapOf()
 
@@ -232,7 +320,7 @@ class Update(val table: Table) : Statement {
     }
 }
 
-class Insert(val table: Table) : Statement {
+open class Insert(val table: Table) : Statement {
     private var columnLst: Array<out Column>? = null
     private var values: List<out Literal> = emptyList()
 
@@ -260,27 +348,110 @@ class Insert(val table: Table) : Statement {
         }
 
 
-        return "INSERT INTO ${table.forInsert()}" +
-                "${if (columnLst!!.isNotEmpty()) "(${columnLst!!.map { x -> x.forInsert() }.joinToString(separator = ", ")})" else ""} " +
+        return "INSERT INTO ${table.forAction()}" +
+                "${if (columnLst!!.isNotEmpty()) "(${columnLst!!.map { x -> x.forAction() }.joinToString(separator = ", ")})" else ""} " +
                 "VALUES(${values.joinToString(separator = ", ")})"
     }
 }
 
-class Delete(val table: Table) : Statement {
-    override fun build(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+open class Delete(val table: Table) : Statement {
+    private var condition: Condition? = null
+
+    fun where(condition: Condition): Delete {
+        if (this.condition != null) {
+            throw RuntimeException("Condition for delete is already defined")
+        }
+
+        this.condition = condition
+
+        return this
+    }
+
+    override fun build(): String = "DELETE FROM ${table.forAction()}" +
+            " ${if (condition != null) "WHERE ${condition!!.build()}" else ""}"
+}
+
+open class Create {
+    fun table(schema: String? = null, name: String, caseSensitive: Boolean = false): CreateTable = CreateTable(schema, name, caseSensitive)
+
+    fun index(name: String): CreateIndex = CreateIndex(name)
+
+    open inner class CreateTable(schema: String? = null, name: String, caseSensitive: Boolean = false) : Statement {
+        private val table: Table = Table(schema, name, caseSensitive)
+        private val columns: MutableList<Pair<String, DataType>> = mutableListOf()
+
+        fun addColumn(name: String, type: DataType): CreateTable {
+            columns.add(Pair(name, type))
+
+            return this
+        }
+
+        override fun build(): String {
+            if (columns.isEmpty()) {
+                throw RuntimeException("Columns were not specified")
+            }
+            return "CREATE TABLE ${table.forAction()} (\n" +
+                    "${columns.map { x -> "\t${x.first} ${x.second.definition()}" }.joinToString(separator = ", \n")}" +
+                    "\n)"
+        }
+    }
+
+    // default index implementation
+    open inner class CreateIndex(private val name: String) : Statement {
+        private var table: Table? = null
+        private var columns: Array<out Column>? = null
+
+        fun forTable(table: Table): CreateIndex {
+            if (this.table != null) {
+                throw RuntimeException("Table is already defined")
+            }
+
+            this.table = table
+
+            return this
+        }
+
+        fun forTable(schema: String? = null, name: String, caseSensitive: Boolean = false): CreateIndex {
+            if (this.table != null) {
+                throw RuntimeException("Table is already defined")
+            }
+
+            this.table = Table(schema, name, caseSensitive)
+
+            return this
+        }
+
+        fun onColumns(vararg column: Column): CreateIndex {
+            if (this.columns != null) {
+                throw RuntimeException("Columns list is already defined")
+            }
+
+            this.columns = column
+
+            return this
+        }
+
+        override fun build(): String {
+            if (table == null) {
+                throw RuntimeException("Table was not defined")
+            }
+
+            if (columns == null || columns!!.isEmpty()) {
+                throw RuntimeException("Columns list was not defined")
+            }
+
+            return "CREATE INDEX $name ON ${table!!.forAction()} (${columns!!.map { x -> x.forAction() }.joinToString(separator = ", ")})"
+        }
     }
 }
 
-class Create {}
-
-class Truncate(val table: Table) : Statement {
+open class Truncate(val table: Table) : Statement {
     override fun build(): String {
         return "TRUNCATE $table"
     }
 }
 
-class Drop(val table: Table) : Statement {
+open class Drop(val table: Table) : Statement {
     private var cascade: Boolean = false
 
     fun cascade(): Drop {
@@ -298,7 +469,7 @@ class Drop(val table: Table) : Statement {
     }
 }
 
-class Alter {}
+open class Alter {}
 
 class From<A : Statement>(private val query: A, private val table: Table) : ForwardStatement<A>(query) {
 
