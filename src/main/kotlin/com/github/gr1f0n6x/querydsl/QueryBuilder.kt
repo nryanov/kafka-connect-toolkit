@@ -2,16 +2,16 @@ package com.github.gr1f0n6x.querydsl
 
 import java.util.Date
 
-internal fun escapedValue(value: Any): Any {
+internal fun escapedValue(value: Any?): Any? {
     return value
 }
 
-data class Table(val schema: String? = null, val name: String, val caseSensitive: Boolean = false) {
+data class Table(val schema: String? = null, val name: String, val caseSensitive: Boolean = false): Value {
     private var alias: String? = null
 
     override fun toString(): String {
         return if (caseSensitive) {
-            "${if (schema != null) "\"$schema.\"" else ""}\"$name\"${if (alias != null) " $alias" else ""}"
+            "${if (schema != null) "\"$schema\"." else ""}\"$name\"${if (alias != null) " $alias" else ""}"
         } else {
             "${if (schema != null) "$schema." else ""}$name${if (alias != null) " $alias" else ""}"
         }
@@ -19,56 +19,68 @@ data class Table(val schema: String? = null, val name: String, val caseSensitive
 
     internal fun forAction(): String {
         return if (caseSensitive) {
-            "${if (schema != null) "\"$schema.\"" else ""}\"$name\""
+            "${if (schema != null) "\"$schema\"." else ""}\"$name\""
         } else {
             "${if (schema != null) "$schema." else ""}$name"
         }
     }
 
-    infix fun aS(alias: String): Table = this.apply { this.alias = alias }
+    override infix fun aS(alias: String): Table = this.apply { this.alias = alias }
+
+    override fun build(): String = this.toString()
 }
 
 data class Index(val schema: String? = null, val name: String, val caseSensitive: Boolean = false) {
-    internal fun forAction(): String {
+    override fun toString(): String {
         return if (caseSensitive) {
-            "${if (schema != null) "\"$schema.\"" else ""}\"$name\""
+            "${if (schema != null) "\"$schema\"." else ""}\"$name\""
         } else {
             "${if (schema != null) "$schema." else ""}$name"
         }
     }
+
+    internal fun forAction(): String = toString()
 }
 
-abstract class Value {
+interface Value {
+    infix fun aS(alias: String): Value
+
+    fun build(): String
+}
+
+abstract class BaseValue: Value {
     protected var alias: String? = null
 
-    fun between(lower: Value, upper: Value): Condition = TernaryConditionBuilder(ConditionType.BETWEEN).apply { left = lower; mid = this@Value; right = upper }.build()
+    override infix fun aS(alias: String): BaseValue = this.apply { this.alias = alias }
 
-    infix fun aS(alias: String): Value = this.apply { this.alias = alias }
+    fun between(lower: BaseValue, upper: BaseValue): Condition = TernaryConditionBuilder(ConditionType.BETWEEN).apply { left = lower; mid = this@BaseValue; right = upper }.build()
 
-    infix fun eq(value: Value): Condition = BinaryConditionBuilder(ConditionType.EQ).apply { left = this@Value; right = value }.build()
+    infix fun eq(value: Value): Condition = BinaryConditionBuilder(ConditionType.EQ).apply { left = this@BaseValue; right = value }.build()
 
-    infix fun ge(value: Value): Condition = BinaryConditionBuilder(ConditionType.GE).apply { left = this@Value; right = value }.build()
+    infix fun ge(value: Value): Condition = BinaryConditionBuilder(ConditionType.GE).apply { left = this@BaseValue; right = value }.build()
 
-    infix fun le(value: Value): Condition = BinaryConditionBuilder(ConditionType.LE).apply { left = this@Value; right = value }.build()
+    infix fun le(value: Value): Condition = BinaryConditionBuilder(ConditionType.LE).apply { left = this@BaseValue; right = value }.build()
 
-    infix fun gt(value: Value): Condition = BinaryConditionBuilder(ConditionType.GT).apply { left = this@Value; right = value }.build()
+    infix fun gt(value: Value): Condition = BinaryConditionBuilder(ConditionType.GT).apply { left = this@BaseValue; right = value }.build()
 
-    infix fun lt(value: Value): Condition = BinaryConditionBuilder(ConditionType.LT).apply { left = this@Value; right = value }.build()
+    infix fun lt(value: Value): Condition = BinaryConditionBuilder(ConditionType.LT).apply { left = this@BaseValue; right = value }.build()
 
-    infix fun iS(value: Value): Condition = BinaryConditionBuilder(ConditionType.IS).apply { left = this@Value; right = value }.build()
+    infix fun iS(value: Value): Condition = BinaryConditionBuilder(ConditionType.IS).apply { left = this@BaseValue; right = value }.build()
 
-    infix fun iSNot(value: Value): Condition = BinaryConditionBuilder(ConditionType.IS_NOT).apply { left = this@Value; right = value }.build()
+    infix fun iSNot(value: Value): Condition = BinaryConditionBuilder(ConditionType.IS_NOT).apply { left = this@BaseValue; right = value }.build()
 
-    infix fun like(value: Value): Condition = BinaryConditionBuilder(ConditionType.LIKE).apply { left = this@Value; right = value }.build()
+    infix fun like(value: Value): Condition = BinaryConditionBuilder(ConditionType.LIKE).apply { left = this@BaseValue; right = value }.build()
 
-    infix fun iN(value: Value): Condition = BinaryConditionBuilder(ConditionType.IN).apply { left = this@Value; right = value }.build()
+    infix fun iN(value: Value): Condition = BinaryConditionBuilder(ConditionType.IN).apply { left = this@BaseValue; right = value }.build()
+
+    override fun build(): String = this.toString()
 }
 
-object NULL : Literal("NULL") {
-    override fun toString(): String = "NULL"
-}
+class NULL : Literal("NULL")
 
-data class Column(val name: String, val tableAlias: String? = null, val caseSensitive: Boolean = false) : Value() {
+class ALL: Literal("*")
+
+data class Column(val name: String, val tableAlias: String? = null, val caseSensitive: Boolean = false) : BaseValue() {
     override fun toString(): String {
         return if (caseSensitive) {
             "${if (tableAlias != null) "$tableAlias." else ""}\"$name\"${if (alias != null) " as $alias" else ""}"
@@ -86,10 +98,12 @@ data class Column(val name: String, val tableAlias: String? = null, val caseSens
     }
 }
 
-abstract class Literal(val literal: Any) : Value() {
+abstract class Literal(protected val literal: Any? = NULL()) : BaseValue() {
     override fun toString(): String {
         return "${escapedValue(literal)}${if (alias != null) " as $alias" else ""}"
     }
+
+    protected fun aliasWrapper(value: Any): String = "$value${if (alias != null) " as $alias" else ""}"
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -103,7 +117,11 @@ abstract class Literal(val literal: Any) : Value() {
     }
 
     override fun hashCode(): Int {
-        return literal.hashCode()
+        return if (literal != null) {
+            literal.hashCode()
+        } else {
+            0
+        }
     }
 }
 
@@ -163,34 +181,43 @@ abstract class DataType {
     }
 }
 
-class BIT(val value: Int) : Literal(value)
+class BIT(value: Int? = null) : Literal(value) {
+    override fun toString(): String {
+        return when {
+            literal == null -> aliasWrapper(NULL().toString())
+            literal == 0 -> aliasWrapper("0")
+            literal != 0 -> aliasWrapper("1")
+            else -> aliasWrapper(NULL().toString())
+        }
+    }
+}
 
-class DATE(val value: Date) : Literal(value)
+class DATE(value: Date) : Literal(value)
 
-class TIME(val value: Date) : Literal(value)
+class TIME(value: Date) : Literal(value)
 
-class TIMESTAMP(val value: Date) : Literal(value)
+class TIMESTAMP(value: Date) : Literal(value)
 
-class DECIMAL(val value: Long) : Literal(value)
+class DECIMAL(value: Long) : Literal(value)
 
-class REAL(val value: Float) : Literal(value)
+class REAL(value: Float) : Literal(value)
 
-class FLOAT(val value: Double) : Literal(value)
+class FLOAT(value: Double) : Literal(value)
 
-class SMALLINT(val value: Short) : Literal(value)
+class SMALLINT(value: Short) : Literal(value)
 
-class INTEGER(val value: Int) : Literal(value)
+class INTEGER(value: Int) : Literal(value)
 
-class CHAR(val value: String = "") : Literal(value)
+class CHAR(value: String = "") : Literal(value)
 
-class NCHAR(val value: String = "") : Literal(value)
+class NCHAR(value: String = "") : Literal(value)
 
-class VARCHAR(val value: String = "") : Literal(value)
+class VARCHAR(value: String = "") : Literal(value)
 
-class NVARCHAR(val value: String = "") : Literal(value)
+class NVARCHAR(value: String = "") : Literal(value)
 
 object QueryBuilder {
-    fun select(vararg columns: Any): Select = Select(*columns)
+    fun select(vararg columns: Value): Select = Select(*columns)
 
     fun update(table: Table): Update = Update(table)
 
@@ -219,21 +246,24 @@ interface Clause {
 
 interface Statement : Clause
 
-abstract class ForwardStatement<out T : Statement>(private val statement: T) : Statement
+abstract class ForwardStatement<out T : Statement>(private val statement: T) : Statement {
+    fun and(): T = statement
+}
 
-open class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
+open class Select(private vararg val columns: Value = arrayOf(ALL())) : Statement, Value {
     private var from: From<Select>? = null
     private var limit: Int? = null
     private var groupBy: Array<out Column>? = null
     private var orderBy: Array<out Order>? = null
     private var having: Condition? = null
+    private var alias: String? = null
 
-    fun from(table: Table): From<Select> {
+    fun from(source: Value): From<Select> {
         if (this.from != null) {
             throw RuntimeException("From part is already defined")
         }
 
-        from = From(this, table)
+        from = From(this, source)
 
         return from as From<Select>
     }
@@ -289,11 +319,25 @@ open class Select(private vararg val columns: Any = arrayOf("*")) : Statement {
                 " ${if (orderBy != null) "ORDER BY ${orderBy!!.map { x -> x.build() }.joinToString(separator = ", ")}" else ""}" +
                 " ${if (limit != null) "LIMIT $limit" else ""}"
     }
+
+    override fun aS(alias: String): Select {
+        this.alias = alias
+
+        return this
+    }
+
+    override fun toString(): String {
+        return if (alias != null) {
+            "(${this.build()}) as $alias"
+        } else {
+            this.build()
+        }
+    }
 }
 
 open class Update(val table: Table) : Statement {
     private var condition: Condition? = null
-    private val updates: MutableMap<Column, Value> = mutableMapOf()
+    private val updates: MutableMap<Column, BaseValue> = mutableMapOf()
 
     fun where(condition: Condition): Update {
         if (this.condition != null) {
@@ -347,7 +391,7 @@ open class Insert(val table: Table) : Statement {
     override fun build(): String {
         if (columnLst != null) {
             if (columnLst!!.size > values.size) {
-                values = values.plus(Array(columnLst!!.size - values.size, { NULL }))
+                values = values.plus(Array(columnLst!!.size - values.size, { NULL() }))
             }
 
             if (columnLst!!.size < values.size) {
@@ -505,21 +549,21 @@ open class Alter {
     }
 }
 
-class From<A : Statement>(private val query: A, private val table: Table) : ForwardStatement<A>(query) {
+class From<A : Statement>(private val query: A, private val source: Value) : ForwardStatement<A>(query) {
 
     private var joins: MutableList<Join<A>> = mutableListOf()
     private var where: Condition? = null
 
-    fun innerJoin(table: Table): Join<A> = createJoin(table, JoinType.INNER)
+    fun innerJoin(source: Value): Join<A> = createJoin(source, JoinType.INNER)
 
-    fun leftJoin(table: Table): Join<A> = createJoin(table, JoinType.LEFT)
+    fun leftJoin(source: Value): Join<A> = createJoin(source, JoinType.LEFT)
 
-    fun rightJoin(table: Table): Join<A> = createJoin(table, JoinType.RIGHT)
+    fun rightJoin(source: Value): Join<A> = createJoin(source, JoinType.RIGHT)
 
-    fun fullJoin(table: Table): Join<A> = createJoin(table, JoinType.FULL)
+    fun fullJoin(source: Value): Join<A> = createJoin(source, JoinType.FULL)
 
-    private fun createJoin(table: Table, joinType: JoinType): Join<A> {
-        val join = Join(this, table, joinType)
+    private fun createJoin(source: Value, joinType: JoinType): Join<A> {
+        val join = Join(this, source, joinType)
         joins.add(join)
 
         return join
@@ -537,7 +581,7 @@ class From<A : Statement>(private val query: A, private val table: Table) : Forw
         return query
     }
 
-    override fun build(): String = "FROM $table" +
+    override fun build(): String = "FROM $source" +
             " ${if (joins.isNotEmpty()) "\n${joins.map { x -> x.build() }.joinToString(separator = "\n")}" else ""}" +
             " ${if (where != null) "\nWHERE ${where!!.build()}" else ""}"
 }
@@ -546,7 +590,7 @@ enum class JoinType(val type: String) {
     INNER("INNER JOIN"), LEFT("LEFT JOIN"), RIGHT("RIGHT JOIN"), FULL("FULL JOIN")
 }
 
-class Join<A : Statement>(private val clause: From<A>, private val table: Table, private val joinType: JoinType) : ForwardStatement<From<A>>(clause) {
+class Join<A : Statement>(private val clause: From<A>, private val source: Value, private val joinType: JoinType) : ForwardStatement<From<A>>(clause) {
 
     private lateinit var condition: Condition
 
@@ -562,7 +606,7 @@ class Join<A : Statement>(private val clause: From<A>, private val table: Table,
         return clause
     }
 
-    override fun build(): String = "${joinType.type} $table ON ${condition.build()}"
+    override fun build(): String = "${joinType.type} $source ON ${condition.build()}"
 }
 
 enum class QueryType {
@@ -577,7 +621,7 @@ enum class AggregationType(val symbol: String) {
     COUNT("COUNT"), MAX("MAX"), MIN("MIN"), AVG("AVG")
 }
 
-class Aggregation(private val aggregationType: AggregationType, private val column: Any) : Value(), Clause {
+class Aggregation(private val aggregationType: AggregationType, private val column: Any) : BaseValue(), Clause {
     override fun build(): String = "${aggregationType.symbol}($column)"
 
     override fun toString(): String = this.build()
