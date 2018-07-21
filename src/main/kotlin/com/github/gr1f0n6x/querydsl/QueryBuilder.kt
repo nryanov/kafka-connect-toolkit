@@ -79,11 +79,10 @@ abstract class BaseValue : Value {
     infix fun iN(value: Value): Condition = BinaryConditionBuilder(ConditionType.IN).apply { left = this@BaseValue; right = value }.build()
 }
 
-// TODO: pattern matching instead of concrete data type classes
-abstract class Literal(protected val literal: Any? = NULL()) : BaseValue() {
+open class Literal(protected val literal: Any? = NULL()) : BaseValue() {
     override fun toString(): String = this.toSQL()
 
-    protected fun aliasWrapper(value: Any): String = "$value${if (alias != null) " as $alias" else ""}"
+    private fun aliasWrapper(value: Any): String = "$value${if (alias != null) " as $alias" else ""}"
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -257,57 +256,11 @@ class NULL : Literal("NULL")
 
 class ALL : Literal("*")
 
-class BIT(value: Int? = null) : Literal(value) {
-    override fun toString(): String {
-        return when {
-            literal == null -> aliasWrapper(NULL().toString())
-            literal == 0 -> aliasWrapper("0")
-            literal != 0 -> aliasWrapper("1")
-            else -> aliasWrapper(NULL().toString())
-        }
-    }
-}
-
-class VARBIT(vararg values: Int) : Literal(values) {
-    override fun toString(): String {
-        return when {
-            literal == null -> aliasWrapper(NULL().toString())
-            literal == 0 -> aliasWrapper("0")
-            literal != 0 -> aliasWrapper("1")
-            else -> aliasWrapper(NULL().toString())
-        }
-    }
-}
-
-class DATE(value: Date) : Literal(value)
-
-class TIME(value: Date) : Literal(value)
-
-class TIMESTAMP(value: Date) : Literal(value)
-
-class DECIMAL(value: Long) : Literal(value)
-
-class REAL(value: Float) : Literal(value)
-
-class FLOAT(value: Double) : Literal(value)
-
-class SMALLINT(value: Short) : Literal(value)
-
-class INTEGER(value: Int) : Literal(value)
-
-class CHAR(value: String = "") : Literal(value)
-
-class NCHAR(value: String = "") : Literal(value)
-
-class VARCHAR(value: String = "") : Literal(value)
-
-class NVARCHAR(value: String = "") : Literal(value)
-
 class PrimaryKey(private val columns: Array<Column>) : Constraint {
     override fun toSQL(): String = "PRIMARY KEY (${columns.map { x -> x.forAction() }.joinToString(separator = ", ")})"
 }
 
-class ForeignKey(private val columns: Array<Column>, private val reference: Table, private val columnsReference: Array<Column>) : Constraint {
+open class ForeignKey(private val columns: Array<Column>, private val reference: Table, private val columnsReference: Array<Column>) : Constraint {
     override fun toSQL(): String = "FOREIGN KEY (${columns.map { x -> x.forAction() }.joinToString(separator = ", ")}) REFERENCES ${reference.forAction()}(${columnsReference.map { x -> x.forAction() }.joinToString(separator = ", ")})"
 }
 
@@ -373,20 +326,19 @@ class TernaryCondition(conditionType: ConditionType, private val left: Value, pr
     override fun toSQL(): String = "$mid ${conditionType.symbol} $left AND $right"
 }
 
-class From<A : Statement>(private val query: A, private val source: Source) : ForwardStatement<A>(query) {
-
+class From<out A : Statement>(private val query: A, private val source: Source) : ForwardStatement<A>(query) {
     private var joins: MutableList<Join<A>> = mutableListOf()
     private var where: Condition? = null
 
-    fun innerJoin(source: Source): Join<A> = createJoin(source, JoinType.INNER)
+    fun innerJoin(source: Source): Join<out A> = createJoin(source, JoinType.INNER)
 
-    fun leftJoin(source: Source): Join<A> = createJoin(source, JoinType.LEFT)
+    fun leftJoin(source: Source): Join<out A> = createJoin(source, JoinType.LEFT)
 
-    fun rightJoin(source: Source): Join<A> = createJoin(source, JoinType.RIGHT)
+    fun rightJoin(source: Source): Join<out A> = createJoin(source, JoinType.RIGHT)
 
-    fun fullJoin(source: Source): Join<A> = createJoin(source, JoinType.FULL)
+    fun fullJoin(source: Source): Join<out A> = createJoin(source, JoinType.FULL)
 
-    private fun createJoin(source: Source, joinType: JoinType): Join<A> {
+    private fun createJoin(source: Source, joinType: JoinType): Join<out A> {
         val join = Join(this, source, joinType)
         joins.add(join)
 
@@ -441,18 +393,26 @@ class AggregationBuilder(private val aggregationType: AggregationType) : ClauseB
     override fun build(): Aggregation = Aggregation(aggregationType, column)
 }
 
-class Order(private val orderType: OrderType, private val column: Column) : Clause {
-    override fun toSQL(): String = "$column ${orderType.symbol}"
+enum class NullsOrder(val value: String) {
+    FIRST("FIRST"), LAST("LAST")
 }
 
-class OrderBuilder(private val orderType: OrderType) : ClauseBuilder<Order> {
+class Order(private val orderType: OrderType, private val column: Column) : Clause {
+    private var nullsFirst: NullsOrder? = null
+
+    fun nullsFirst(type: NullsOrder) = this.apply { this.nullsFirst = type }
+
+    override fun toSQL(): String = "$column ${orderType.symbol}${if (nullsFirst != null) " NULLS ${nullsFirst!!.value}" else ""}"
+}
+
+open class OrderBuilder(private val orderType: OrderType) : ClauseBuilder<Order> {
     lateinit var column: Column
 
     override fun build(): Order = Order(orderType, column)
 }
 
 object QueryBuilder {
-    fun select(vararg columns: Value): Select = Select(*columns)
+    fun select(columns: Array<Value>): Select = Select(columns)
 
     fun update(table: Table): Update = Update(table)
 
@@ -469,15 +429,19 @@ object QueryBuilder {
     fun alter(): Alter = Alter()
 }
 
-open class Select(private vararg val columns: Value = arrayOf(ALL())) : Statement, Source, Value {
+open class Select(private val columns: Array<Value> = arrayOf(ALL())) : Statement, Source, Value {
     private var from: From<Select>? = null
     private var limit: Int? = null
+    private var offset: Int? = null
     private var groupBy: Array<out Column>? = null
     private var orderBy: Array<out Order>? = null
     private var having: Condition? = null
     private var alias: String? = null
+    private var distinct: Boolean = false
 
-    fun from(source: Source): From<Select> {
+    open fun distinct(): Select = this.apply { distinct = true }
+
+    open fun from(source: Source): From<Select> {
         if (this.from != null) {
             throw RuntimeException("From part is already defined")
         }
@@ -487,7 +451,7 @@ open class Select(private vararg val columns: Value = arrayOf(ALL())) : Statemen
         return from as From<Select>
     }
 
-    fun groupBy(vararg columns: Column): Select {
+    open fun groupBy(vararg columns: Column): Select {
         if (this.groupBy != null) {
             throw RuntimeException("Group by part is already defined")
         }
@@ -497,7 +461,7 @@ open class Select(private vararg val columns: Value = arrayOf(ALL())) : Statemen
         return this
     }
 
-    fun limit(limit: Int): Select {
+    open fun limit(limit: Int): Select {
         if (this.limit != null) {
             throw RuntimeException("Limit part is already defined")
         }
@@ -511,7 +475,21 @@ open class Select(private vararg val columns: Value = arrayOf(ALL())) : Statemen
         return this
     }
 
-    fun orderBy(vararg order: Order): Select {
+    open fun offset(number: Int): Select {
+        if (this.offset != null) {
+            throw RuntimeException("Offset part is already defined")
+        }
+
+        if (number < 0) {
+            throw RuntimeException("Offset has to be a positive number")
+        }
+
+        this.offset = number
+
+        return this
+    }
+
+    open fun orderBy(vararg order: Order): Select {
         if (this.orderBy != null) {
             throw RuntimeException("Order by part is already defined")
         }
@@ -521,7 +499,7 @@ open class Select(private vararg val columns: Value = arrayOf(ALL())) : Statemen
         return this
     }
 
-    fun having(condition: Condition): Select {
+    open fun having(condition: Condition): Select {
         if (this.having != null) {
             throw RuntimeException("Having part is already defined")
         }
@@ -532,11 +510,12 @@ open class Select(private vararg val columns: Value = arrayOf(ALL())) : Statemen
     }
 
     override fun toSQL(): String {
-        return "SELECT ${columns.joinToString(separator = ", ")} ${from!!.toSQL()}" +
+        return "SELECT${if (distinct) " DISTINCT " else ""} ${columns.joinToString(separator = ", ")} ${from!!.toSQL()}" +
                 "${if (groupBy != null) " GROUP BY ${groupBy!!.joinToString(separator = ", ")}" else ""}" +
                 "${if (having != null) " HAVING ${having!!.toSQL()}" else ""}" +
                 "${if (orderBy != null) " ORDER BY ${orderBy!!.map { x -> x.toSQL() }.joinToString(separator = ", ")}" else ""}" +
                 "${if (limit != null) " LIMIT $limit" else ""}"
+                "${if (offset != null) " OFFSET $offset" else ""}"
     }
 
     override fun aS(alias: String): Select {
@@ -592,16 +571,16 @@ open class Update(val table: Table) : Statement {
 }
 
 open class Insert(val table: Table) : Statement {
-    private var columnLst: Array<out Column>? = null
-    private var values: List<out Literal> = emptyList()
+    protected var columnLst: Array<out Column>? = null
+    protected var values: List<out Literal> = emptyList()
 
-    fun columns(vararg columns: Column): Insert {
+    open fun columns(vararg columns: Column): Insert {
         columnLst = columns
 
         return this
     }
 
-    fun values(vararg values: Literal): Insert {
+    open fun values(vararg values: Literal): Insert {
         this.values = values.asList()
 
         return this
@@ -643,24 +622,24 @@ open class Delete(val table: Table) : Statement {
 }
 
 open class Create {
-    fun table(schema: String? = null, name: String, caseSensitive: Boolean = false): CreateTable = CreateTable(schema, name, caseSensitive)
+    open fun table(schema: String? = null, name: String, caseSensitive: Boolean = false): CreateTable = CreateTable(schema, name, caseSensitive)
 
-    fun index(name: String): CreateIndex = CreateIndex(name)
+    open fun index(name: String): CreateIndex = CreateIndex(name)
 
     open class CreateTable(schema: String? = null, name: String, caseSensitive: Boolean = false) : Statement {
-        private val table: Table = Table(schema, name, caseSensitive)
-        private val columns: MutableList<Pair<String, DataType>> = mutableListOf()
-        private var primaryKey: PrimaryKey? = null
-        private var foreignKeys: Array<out ForeignKey>? = null
-        private var checks: Array<out Check>? = null
+        protected val table: Table = Table(schema, name, caseSensitive)
+        protected val columns: MutableList<Pair<String, DataType>> = mutableListOf()
+        protected var primaryKey: PrimaryKey? = null
+        protected var foreignKeys: Array<out ForeignKey>? = null
+        protected var checks: Array<out Check>? = null
 
-        fun addColumn(name: String, type: DataType): CreateTable {
+        open fun addColumn(name: String, type: DataType): CreateTable {
             columns.add(Pair(name, type))
 
             return this
         }
 
-        fun primaryKey(primaryKey: PrimaryKey): CreateTable {
+        open fun primaryKey(primaryKey: PrimaryKey): CreateTable {
             if (this.primaryKey != null) {
                 throw RuntimeException("PK is already defined")
             }
@@ -670,7 +649,7 @@ open class Create {
             return this
         }
 
-        fun foreignKeys(foreignKeys: Array<ForeignKey>): CreateTable {
+        open fun foreignKeys(foreignKeys: Array<ForeignKey>): CreateTable {
             if (this.foreignKeys != null) {
                 throw RuntimeException("FKs are already defined")
             }
@@ -680,7 +659,7 @@ open class Create {
             return this
         }
 
-        fun checks(checks: Array<Check>): CreateTable {
+        open fun checks(checks: Array<Check>): CreateTable {
             if (this.checks != null) {
                 throw RuntimeException("Checks are already defined")
             }
@@ -704,7 +683,6 @@ open class Create {
         }
     }
 
-    // default index implementation
     open class CreateIndex(private val name: String) : Statement {
         private var table: Table? = null
         private var columns: Array<out Column>? = null
