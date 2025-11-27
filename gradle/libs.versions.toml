@@ -1,0 +1,32 @@
+[versions]
+kafka = "3.9.1"
+debezium = "3.3.1.Final"
+
+# test dependencies
+slfj4 = "2.0.17"
+junit = "5.12.2"
+junit-platform = "1.12.2"
+testcontainers = "1.21.0"
+logback = "1.5.18"
+
+[libraries]
+kafka-connect = { group = "org.apache.kafka", name = "connect-api", version.ref = "kafka" }
+debezium-api = { group = "io.debezium", name = "debezium-api", version.ref = "debezium" }
+
+# test dependencies
+junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
+junit = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit-platform" }
+
+slf4j = { group = "org.slf4j", name = "slf4j-api", version.ref = "slfj4" }
+logback = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
+
+kafka-clients = { group = "org.apache.kafka", name = "kafka-clients", version.ref = "kafka" }
+
+testcontainers-core = { group = "org.testcontainers", name = "testcontainers", version.ref = "testcontainers" }
+testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers" }
+testcontainers-kafka = { group = "org.testcontainers", name = "kafka", version.ref = "testcontainers" }
+testcontainers-debezium = { group = "io.debezium", name = "debezium-testing-testcontainers", version.ref = "debezium" }
+
+[plugins]
+
