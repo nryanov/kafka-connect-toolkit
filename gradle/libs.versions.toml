@@ -27,7 +27,7 @@ kafka-clients = { group = "org.apache.kafka", name = "kafka-clients", version.re
 
 testcontainers-core = { group = "org.testcontainers", name = "testcontainers", version.ref = "testcontainers" }
 testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers" }
-testcontainers-kafka = { group = "org.testcontainers", name = "kafka", version.ref = "testcontainers" }
+testcontainers-redpanda = { group = "org.testcontainers", name = "redpanda", version.ref = "testcontainers" }
 testcontainers-debezium = { group = "io.debezium", name = "debezium-testing-testcontainers", version.ref = "debezium" }
 
 postgres-driver = { group = "org.postgresql", name = "postgresql", version.ref = "postgresDriver" }

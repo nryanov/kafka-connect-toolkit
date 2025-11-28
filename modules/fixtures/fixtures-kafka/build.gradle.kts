@@ -3,6 +3,6 @@ plugins {
 }
 
 dependencies {
-    testFixturesImplementation(libs.testcontainers.kafka)
+    testFixturesImplementation(libs.testcontainers.redpanda)
     testFixturesApi(libs.kafka.clients)
 }
