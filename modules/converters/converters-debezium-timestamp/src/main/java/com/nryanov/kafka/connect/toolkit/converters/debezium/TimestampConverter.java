@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.converters.debezium.timestamp;
+package com.nryanov.kafka.connect.toolkit.converters.debezium;
 
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;

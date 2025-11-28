@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.converters.debezium.timestamp;
+package com.nryanov.kafka.connect.toolkit.converters.debezium;
 
 import com.nryanov.kafka.connect.toolkit.fixtures.debezium.MockConverterRegistry;
 import com.nryanov.kafka.connect.toolkit.fixtures.debezium.MockRelationalColumn;
@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class TimestampConverterTest {
     @Test
-    public void correctlyConvertTimestamp() {
+    public void correctlyConvertTimestampFromLong() {
         var converter = new TimestampConverter();
 
         var column = new MockRelationalColumn("timestamp", "timestamp");
