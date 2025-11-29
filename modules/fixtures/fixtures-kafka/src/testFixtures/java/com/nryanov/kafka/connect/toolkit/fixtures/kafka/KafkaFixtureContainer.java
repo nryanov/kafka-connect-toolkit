@@ -16,7 +16,8 @@ public class KafkaFixtureContainer implements Startable {
     }
 
     public KafkaFixtureContainer() {
-        redpanda = new RedpandaContainer(DockerImageName.parse("redpandadata/redpanda:v24.2.25"));
+        redpanda = new RedpandaContainer(DockerImageName.parse("redpandadata/redpanda:v24.2.25"))
+                .withListener("redpanda:29092");
     }
 
     @Override
@@ -39,7 +40,7 @@ public class KafkaFixtureContainer implements Startable {
             throw new IllegalStateException("Redpanda container is not running yet");
         }
 
-        return redpanda.getBootstrapServers();
+        return redpanda.getHost() + ":9092";
     }
 
     public String getAliasedBoostrapServers() {
@@ -47,6 +48,6 @@ public class KafkaFixtureContainer implements Startable {
             throw new IllegalStateException("Redpanda container is not running yet");
         }
 
-        return redpanda.getNetworkAliases().getFirst() + ":29092";
+        return "redpanda:29092";
     }
 }
