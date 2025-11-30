@@ -1,3 +1,0 @@
-tasks.configureEach {
-    enabled = false
-}

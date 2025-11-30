@@ -40,7 +40,7 @@ public class KafkaFixtureContainer implements Startable {
             throw new IllegalStateException("Redpanda container is not running yet");
         }
 
-        return redpanda.getHost() + ":9092";
+        return redpanda.getBootstrapServers();
     }
 
     public String getAliasedBoostrapServers() {
