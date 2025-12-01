@@ -7,7 +7,10 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.util.Set;
 
+import static org.testcontainers.containers.PostgreSQLContainer.POSTGRESQL_PORT;
+
 public class PostgresFixtureContainer implements Startable {
+    private final static String NETWORK_ALIAS = "postgres";
     private final PostgreSQLContainer<?> postgres;
 
     public PostgresFixtureContainer() {
@@ -22,7 +25,8 @@ public class PostgresFixtureContainer implements Startable {
                 )
                 .withPassword("postgres")
                 .withUsername("postgres")
-                .withDatabaseName("postgres");
+                .withDatabaseName("postgres")
+                .withNetworkAliases(NETWORK_ALIAS);
     }
 
     public PostgresFixtureContainer(Network network) {
@@ -30,7 +34,7 @@ public class PostgresFixtureContainer implements Startable {
         postgres.withNetwork(network);
     }
 
-    PostgreSQLContainer<?> getPostgres() {
+    public PostgreSQLContainer<?> getPostgres() {
         if (!postgres.isRunning()) {
             throw new RuntimeException("Postgres is not yet started");
         }
@@ -54,6 +58,26 @@ public class PostgresFixtureContainer implements Startable {
 
     public String jdbcUrl() {
         return postgres.getJdbcUrl();
+    }
+
+    public String networkJdbcUrl() {
+        return String.format("jdbc:postgresql://%s:%s/%s", networkHost(), networkPort(), postgres.getDatabaseName());
+    }
+
+    public String host() {
+        return postgres.getHost();
+    }
+
+    public String networkHost() {
+        return NETWORK_ALIAS;
+    }
+
+    public int networkPort() {
+        return POSTGRESQL_PORT;
+    }
+
+    public int port() {
+        return postgres.getMappedPort(POSTGRESQL_PORT);
     }
 
     public String username() {

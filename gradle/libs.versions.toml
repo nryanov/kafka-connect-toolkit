@@ -6,6 +6,8 @@ debezium = "3.3.1.Final"
 slfj4 = "2.0.17"
 junit = "5.12.2"
 postgresDriver = "42.7.8"
+jdbi = "3.50.0"
+agroal = "2.8"
 junit-platform = "1.12.2"
 testcontainers = "1.21.0"
 logback = "1.5.18"
@@ -31,6 +33,9 @@ testcontainers-redpanda = { group = "org.testcontainers", name = "redpanda", ver
 testcontainers-debezium = { group = "io.debezium", name = "debezium-testing-testcontainers", version.ref = "debezium" }
 
 postgres-driver = { group = "org.postgresql", name = "postgresql", version.ref = "postgresDriver" }
+
+jdbi-core = { group = "org.jdbi", name = "jdbi3-core", version.ref = "jdbi" }
+agroal = { group = "io.agroal", name = "agroal-pool", version.ref = "agroal" }
 
 [plugins]
 

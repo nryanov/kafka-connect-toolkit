@@ -9,3 +9,5 @@ include("modules:fixtures:fixtures-postgres")
 
 include("modules:toolkit")
 include("modules:debezium")
+
+include("modules:fixtures:fixtures-kafka-connect")

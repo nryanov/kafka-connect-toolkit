@@ -39,4 +39,17 @@ public class KafkaAdminHelper {
             throw new RuntimeException(e);
         }
     }
+
+    public List<String> topics() {
+        try {
+            return adminClient
+                    .listTopics()
+                    .names()
+                    .get(DEFAULT_WAIT_TIMEOUT, TimeUnit.SECONDS)
+                    .stream()
+                    .toList();
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
