@@ -8,6 +8,7 @@ import org.testcontainers.utility.DockerImageName;
 import java.util.Set;
 
 public class KafkaFixtureContainer implements Startable {
+    public final String NETWORK_ALIAS = "redpanda";
     private final RedpandaContainer redpanda;
 
     public KafkaFixtureContainer(Network network) {
@@ -17,7 +18,12 @@ public class KafkaFixtureContainer implements Startable {
 
     public KafkaFixtureContainer() {
         redpanda = new RedpandaContainer(DockerImageName.parse("redpandadata/redpanda:v24.2.25"))
+                .withNetworkAliases(NETWORK_ALIAS)
                 .withListener("redpanda:29092");
+    }
+
+    public void dependsOn(Startable... dependencies) {
+        redpanda.dependsOn(dependencies);
     }
 
     @Override
@@ -43,11 +49,11 @@ public class KafkaFixtureContainer implements Startable {
         return redpanda.getBootstrapServers();
     }
 
-    public String getAliasedBoostrapServers() {
+    public String getNetworkBoostrapServers() {
         if (!redpanda.isRunning()) {
             throw new IllegalStateException("Redpanda container is not running yet");
         }
 
-        return "redpanda:29092";
+        return NETWORK_ALIAS + ":29092";
     }
 }

@@ -9,6 +9,9 @@ allprojects {
     repositories {
         mavenCentral()
         mavenLocal()
+        maven {
+            url = uri("https://packages.confluent.io/maven")
+        }
     }
 }
 

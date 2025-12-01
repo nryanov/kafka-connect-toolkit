@@ -13,30 +13,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-public class KafkaConsumerHelper {
+public class KafkaRawConsumerHelper {
     private final static Duration DEFAULT_POLL_DURATION = Duration.ofSeconds(1);
-    private final Consumer<byte[], byte[]> consumer;
+    private final Consumer<byte[], byte[]> rawConsumer;
 
-    public KafkaConsumerHelper(KafkaFixtureContainer container) {
-        var properties = new Properties();
-        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, container.bootstrapServers());
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    public KafkaRawConsumerHelper(KafkaFixtureContainer container) {
+        var rawConsumerProperties = new Properties();
+        rawConsumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, container.bootstrapServers());
+        rawConsumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        rawConsumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        rawConsumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
 
-        this.consumer = new KafkaConsumer<>(properties);
+        this.rawConsumer = new KafkaConsumer<>(rawConsumerProperties);
     }
 
     public List<RawMessage> read(String topic, int limit, Duration timeout) {
-        var partitions = consumer.partitionsFor(topic);
+        var partitions = rawConsumer.partitionsFor(topic);
         var metadata = partitions.stream().map(it -> new TopicPartition(it.topic(), it.partition())).toList();
-        consumer.assign(metadata);
+        rawConsumer.assign(metadata);
 
         var result = new ArrayList<RawMessage>();
 
         var start = System.currentTimeMillis();
         while (result.size() < limit && timeout.compareTo(Duration.ofMillis(System.currentTimeMillis() - start)) > 0) {
-            var messages = consumer.poll(DEFAULT_POLL_DURATION);
+            var messages = rawConsumer.poll(DEFAULT_POLL_DURATION);
             messages.forEach(it -> result.add(new RawMessage(it.key(), it.value())));
         }
 

@@ -17,7 +17,8 @@ public class DebeziumFixtureContainer implements Startable {
     }
 
     public DebeziumFixtureContainer() {
-        debezium = new DebeziumContainer("quay.io/debezium/connect:3.3.1.Final");
+        debezium = new DebeziumContainer("quay.io/debezium/connect:3.3.1.Final")
+                .enableApicurioConverters();
     }
 
     @Override

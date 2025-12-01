@@ -24,7 +24,15 @@ public class DebeziumHelper {
         return getConnectorState(name) == Connector.State.RUNNING;
     }
 
+    public boolean isConnectorTaskRunning(String name, int taskId) {
+        return getConnectorTaskState(name, taskId) == Connector.State.RUNNING;
+    }
+
     private Connector.State getConnectorState(String name) {
         return debezium.getContainer().getConnectorState(name);
+    }
+
+    private Connector.State getConnectorTaskState(String name, int taskId) {
+        return debezium.getContainer().getConnectorTaskState(name, taskId);
     }
 }

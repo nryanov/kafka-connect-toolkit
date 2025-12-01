@@ -44,6 +44,7 @@ services:
       - PLAINTEXT://redpanda:28082,OUTSIDE://localhost:8082
     ports:
       - "9092:9092"
+      - "8081:8081"
 
   debezium:
     image: quay.io/debezium/connect:3.3.1.Final
@@ -54,4 +55,9 @@ services:
     depends_on:
       - redpanda
     ports:
-      - "8080:9092"
+      - "8082:9092"
+
+  schema-registry:
+    image: apicurio/apicurio-registry:3.0.9
+    ports:
+      - "8080:8080"

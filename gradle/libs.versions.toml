@@ -10,6 +10,8 @@ jdbi = "3.50.0"
 agroal = "2.8"
 junit-platform = "1.12.2"
 testcontainers = "1.21.0"
+confluent = "7.9.1"
+avro = "1.12.0"
 logback = "1.5.18"
 
 [libraries]
@@ -36,6 +38,10 @@ postgres-driver = { group = "org.postgresql", name = "postgresql", version.ref =
 
 jdbi-core = { group = "org.jdbi", name = "jdbi3-core", version.ref = "jdbi" }
 agroal = { group = "io.agroal", name = "agroal-pool", version.ref = "agroal" }
+
+confluent-avro-converter = { group = "io.confluent", name = "kafka-connect-avro-converter", version.ref = "confluent" }
+confluent-schema-registry-client = { group = "io.confluent", name = "kafka-schema-registry-client", version.ref = "confluent" }
+avro = { group = "org.apache.avro", name = "avro", version.ref = "avro" }
 
 [plugins]
 
