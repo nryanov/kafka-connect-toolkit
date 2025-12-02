@@ -38,6 +38,12 @@ public class KafkaConnectFixtureContainer implements Startable {
         return schemaRegistry;
     }
 
+    public void bindJarsToPostgresDebezium(String path, String name) {
+        var sourcePath = String.format("%s/%s", path, name);
+        var targetPath = String.format("/kafka/libs/%s", name);
+        debezium.withFileSystemBind(sourcePath, targetPath);
+    }
+
     @Override
     public void start() {
         schemaRegistry.start();

@@ -15,13 +15,14 @@ import com.nryanov.kafka.connect.toolkit.fixtures.postgres.helper.PostgresHelper
 import com.nryanov.kafka.connect.toolkit.fixtures.schema_registry.SchemaRegistryFixtureContainer;
 import com.nryanov.kafka.connect.toolkit.fixtures.schema_registry.helper.SchemaRegistryHelper;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
+import org.apache.avro.Schema;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class KafkaConnectDebeziumHelper {
     private final static String SLOT = "debezium_slot";
-    private final static String PUBLICATION = "debezium_publication";
     private final static int DEFAULT_CONSUMER_TIMEOUT = 5;
 
     private final KafkaAdminHelper adminHelper;
@@ -60,7 +61,12 @@ public class KafkaConnectDebeziumHelper {
         adminHelper.createTopic(topic);
     }
 
-    public void setupPostgresDebeziumConnectorJsonFormat() {
+    public void setupPostgresDebeziumConnectorJsonFormat(
+            String connectorName,
+            String topicPrefix,
+            String publicationName,
+            Consumer<ConnectorConfiguration> code
+    ) {
         var connector = ConnectorConfiguration.create()
 //                .with("heartbeat.interval.ms", "1000")
 //                .with("heartbeat.action.query", "INSERT INTO heartbeat(last_update) VALUES (current_timestamp) ON CONFLICT (single_row) DO UPDATE SET last_update=current_timestamp")
@@ -88,16 +94,23 @@ public class KafkaConnectDebeziumHelper {
                 .with("database.port", postgres.networkPort())
                 .with("database.user", postgres.username())
                 .with("database.password", postgres.password())
-                .with("publication.name", PUBLICATION)
+                .with("publication.name", publicationName)
                 .with("slot.name", SLOT)
                 .with("plugin.name", "pgoutput")
                 .with("snapshot.mode", "NO_DATA")
-                .with("topic.prefix", "prefix");
+                .with("topic.prefix", topicPrefix);
 
-        debeziumHelper.registerConnector("test", connector);
+        code.accept(connector);
+
+        debeziumHelper.registerConnector(connectorName, connector);
     }
 
-    public void setupPostgresDebeziumConnectorAvroFormat() {
+    public void setupPostgresDebeziumConnectorAvroFormat(
+            String connectorName,
+            String topicPrefix,
+            String publicationName,
+            Consumer<ConnectorConfiguration> code
+    ) {
         var connector = ConnectorConfiguration.create()
 //                .with("heartbeat.interval.ms", "1000")
 //                .with("heartbeat.action.query", "INSERT INTO heartbeat(last_update) VALUES (current_timestamp) ON CONFLICT (single_row) DO UPDATE SET last_update=current_timestamp")
@@ -125,11 +138,11 @@ public class KafkaConnectDebeziumHelper {
                 .with("database.port", postgres.networkPort())
                 .with("database.user", postgres.username())
                 .with("database.password", postgres.password())
-                .with("publication.name", PUBLICATION)
+                .with("publication.name", publicationName)
                 .with("slot.name", SLOT)
                 .with("plugin.name", "pgoutput")
                 .with("snapshot.mode", "NO_DATA")
-                .with("topic.prefix", "prefix")
+                .with("topic.prefix", topicPrefix)
 
                 .with("key.converter", "io.apicurio.registry.utils.converter.AvroConverter")
                 .with("key.converter.apicurio.registry.url", schemaRegistry.networkUrl())
@@ -151,7 +164,17 @@ public class KafkaConnectDebeziumHelper {
 
                 .with("schema.name.adjustment.mode", "avro");
 
-        debeziumHelper.registerConnector("test", connector);
+        code.accept(connector);
+
+        debeziumHelper.registerConnector(connectorName, connector);
+    }
+
+    public void deleteConnector(String connector) {
+        try {
+        debeziumHelper.deleteConnector(connector);
+        } catch (Exception e) {
+            // ignore
+        }
     }
 
     public boolean isConnectorRunning(String name) {
@@ -162,33 +185,51 @@ public class KafkaConnectDebeziumHelper {
         return debeziumHelper.isConnectorTaskRunning(name, 0);
     }
 
-    public void setupLogicalReplication() {
+    public void setupLogicalReplicationSlot() {
         postgresHelper.inTransaction(tx -> {
             tx.execute("SELECT PG_CREATE_LOGICAL_REPLICATION_SLOT(?, ?)", SLOT, "pgoutput");
-            tx.execute("CREATE PUBLICATION debezium_publication");
+            return 0;
+        });
+    }
 
+    public void dropLogicalReplicationSlot() {
+        postgresHelper.inTransaction(tx -> {
+            tx.execute("SELECT PG_DROP_REPLICATION_SLOT(?)", SLOT);
+            return 0;
+        });
+    }
+
+    public void setupSystemTables() {
+        postgresHelper.inTransaction(tx -> {
             tx.execute("CREATE TABLE heartbeat(single_row BOOL PRIMARY KEY DEFAULT TRUE, \"timestamp\" TIMESTAMP NOT NULL, CONSTRAINT single_row_check CHECK (single_row))");
             tx.execute("CREATE TABLE signals(id TEXT PRIMARY KEY, type TEXT NOT NULL, data TEXT)");
             tx.execute("CREATE TABLE offsets(id TEXT PRIMARY KEY, offset_key TEXT, offset_val TEXT, record_insert_ts TIMESTAMP NOT NULL, record_insert_seq INTEGER NOt NULL)");
 
-            tx.execute("ALTER PUBLICATION debezium_publication ADD TABLE heartbeat");
-            tx.execute("ALTER PUBLICATION debezium_publication ADD TABLE signals");
+            return 0;
+        });
+    }
+
+    public void setupPublication(String publicationName) {
+        postgresHelper.inTransaction(tx -> {
+            tx.execute(String.format("CREATE PUBLICATION %s", publicationName));
+            addTableToPublication(publicationName, "public.heartbeat");
+            addTableToPublication(publicationName, "public.signals");
 
             return 0;
         });
     }
 
-    public void addTableToPublication(String table) {
+    public void addTableToPublication(String publicationName, String table) {
         postgresHelper.inTransaction(tx -> {
-            tx.execute("ALTER PUBLICATION debezium_publication ADD TABLE " + table);
+            tx.execute(String.format("ALTER PUBLICATION %s ADD TABLE %s", publicationName, table));
 
             return 0;
         });
     }
 
-    public void removeTableFromPublication(String table) {
+    public void removeTableFromPublication(String publicationName, String table) {
         postgresHelper.inTransaction(tx -> {
-            tx.execute("ALTER PUBLICATION debezium_publication DROP TABLE " + table);
+            tx.execute(String.format("ALTER PUBLICATION %s DROP TABLE %s", publicationName, table));
 
             return 0;
         });
@@ -224,5 +265,17 @@ public class KafkaConnectDebeziumHelper {
 
     public List<String> getSubjects() {
         return schemaRegistryHelper.subjects();
+    }
+
+    public Schema getLatestSchema(String subject) {
+        return schemaRegistryHelper.getLatestSchema(subject);
+    }
+
+    public Schema getSchema(String subject, int version) {
+        return schemaRegistryHelper.getSubjectSchemaByVersions(subject, version);
+    }
+
+    public List<Integer> getSubjectVersions(String subject) {
+        return schemaRegistryHelper.getSubjectVersions(subject);
     }
 }

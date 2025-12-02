@@ -2,6 +2,7 @@ package com.nryanov.kafka.connect.toolkit.fixtures.debezium;
 
 
 import io.debezium.testing.testcontainers.DebeziumContainer;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
 
@@ -50,5 +51,9 @@ public class DebeziumFixtureContainer implements Startable {
 
     public List<String> getRegisteredConnectors() {
         return debezium.getRegisteredConnectors();
+    }
+
+    public void withFileSystemBind(String hostPath, String targetPath) {
+        debezium.withFileSystemBind(hostPath, targetPath, BindMode.READ_ONLY);
     }
 }

@@ -52,10 +52,15 @@ services:
       BOOTSTRAP_SERVERS: redpanda:29092
       CONFIG_STORAGE_TOPIC: connectors
       OFFSET_STORAGE_TOPIC: offsets
+#      add extra path for plugins if needed
+#      CONNECT_PLUGIN_PATH: "/kafka/connect,/kafka/extra"
     depends_on:
       - redpanda
     ports:
-      - "8082:9092"
+      - "8083:8083"
+#    volumes:
+#  /kafka/libs -- also valid path for plugins. This path will be added in classpth by default
+#      - "./transforms/plugin.jar:/kafka/libs/plugin.jar"
 
   schema-registry:
     image: apicurio/apicurio-registry:3.0.9

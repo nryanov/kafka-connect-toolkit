@@ -4,6 +4,7 @@ import com.nryanov.kafka.connect.toolkit.fixtures.schema_registry.SchemaRegistry
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import org.apache.avro.Schema;
 
 import java.io.IOException;
 import java.util.List;
@@ -21,5 +22,27 @@ public class SchemaRegistryHelper {
         } catch (IOException | RestClientException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public Schema getLatestSchema(String subject) {
+        try {
+            var parsedSchema = client.getLatestSchemaMetadata(subject);
+            return new Schema.Parser().parse(parsedSchema.getSchema());
+        } catch (IOException | RestClientException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<Integer> getSubjectVersions(String subject) {
+        try {
+            return client.getAllVersions(subject);
+        } catch (IOException | RestClientException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Schema getSubjectSchemaByVersions(String subject, int version) {
+        var parsedSchema = client.getByVersion(subject, version, false);
+        return new Schema.Parser().parse(parsedSchema.getSchema());
     }
 }
