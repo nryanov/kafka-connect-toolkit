@@ -18,7 +18,7 @@ public class SchemaRenameTest {
 
     @BeforeAll
     public static void setup() {
-        kafkaConnect.bindJarsToPostgresDebezium("build/libs", "debezium.jar");
+        kafkaConnect.bindTransformJar("build/libs", "debezium.jar");
         kafkaConnect.start();
         debeziumHelper = new KafkaConnectDebeziumHelper(kafkaConnect);
 
