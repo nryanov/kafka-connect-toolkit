@@ -16,7 +16,6 @@ import com.nryanov.kafka.connect.toolkit.fixtures.postgres.helper.PostgresHelper
 import com.nryanov.kafka.connect.toolkit.fixtures.schema_registry.SchemaRegistryFixtureContainer;
 import com.nryanov.kafka.connect.toolkit.fixtures.schema_registry.helper.SchemaRegistryHelper;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
-import org.apache.avro.Schema;
 
 import java.time.Duration;
 import java.util.List;
