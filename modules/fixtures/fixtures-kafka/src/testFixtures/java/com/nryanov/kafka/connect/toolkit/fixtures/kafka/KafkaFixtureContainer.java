@@ -17,7 +17,7 @@ public class KafkaFixtureContainer implements Startable {
     }
 
     public KafkaFixtureContainer() {
-        redpanda = new RedpandaContainer(DockerImageName.parse("redpandadata/redpanda:v24.2.25"))
+        redpanda = new RedpandaContainer(DockerImageName.parse("redpandadata/redpanda:v25.3.1"))
                 .withNetworkAliases(NETWORK_ALIAS)
                 .withListener("redpanda:29092");
     }

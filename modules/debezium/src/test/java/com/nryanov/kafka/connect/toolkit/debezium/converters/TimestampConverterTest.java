@@ -6,7 +6,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -41,180 +42,56 @@ public class TimestampConverterTest {
         debeziumHelper.dropLogicalReplicationSlot();
     }
 
-    @Test
-    public void debeziumPostgresConnectorWithoutTimestampConverterShouldNotChangeSchema() {
-        var testName = "without_converter";
+    @ParameterizedTest
+    @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
+            # CASE                                  JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                  EXPECTED_AVRO_TYPE
+            optional_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 12:00:00'*,    *2025-01-01T12:00:00.000*,      *["null","string"]*
+            optional_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,            *'2025-01-01 12:00:00'*,    *2025-01-01T12:00:00.000*,      *[{"type":"string","connect.default":"1970-01-01T00:00:00.000"},"null"]*
+            required_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE NOT NULL*,                             *'2025-01-01 12:00:00'*,    *2025-01-01T12:00:00.000*,      *["null","string"]*
+            required_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,   *'2025-01-01 12:00:00'*,    *2025-01-01T12:00:00.000*,      *[{"type":"string","connect.default":"1970-01-01T00:00:00.000"},"null"]*
+            optional_timestamp_tz,                  *TIMESTAMP WITH TIME ZONE*,                                         *'2025-01-01 12:00:00'*,    *1735722000000*,                *["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}]*
+            optional_timestamp_tz_with_default,     *TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,               *'2025-01-01 12:00:00'*,    *1735722000000*,                *[{"type":"long","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"},"null"]*
+            required_timestamp_tz,                  *TIMESTAMP WITH TIME ZONE NOT NULL*,                                *'2025-01-01 12:00:00'*,    *1735722000000*,                *["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}]*
+            required_timestamp_tz_with_default,     *TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,      *'2025-01-01 12:00:00'*,    *1735722000000*,                *[{"type":"long","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"},"null"]*
+            optional_date,                          *DATE*,                                                             *'2025-01-01'*,             *20089*,                        *["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Date","logicalType":"date"}]*
+            optional_date_with_default,             *DATE DEFAULT NOW()*,                                               *'2025-01-01'*,             *20089*,                        *[{"type":"int","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Date","logicalType":"date"},"null"]*
+            required_date,                          *DATE NOT NULL*,                                                    *'2025-01-01'*,             *20089*,                        *["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Date","logicalType":"date"}]*
+            required_date_with_default,             *DATE NOT NULL DEFAULT NOW()*,                                      *'2025-01-01'*,             *20089*,                        *[{"type":"int","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Date","logicalType":"date"},"null"]*
+            optional_time_no_tz,                    *TIME WITHOUT TIME ZONE*,                                           *'12:00:00'*,               *12:00:00.000*,                 *["null","string"]*
+            optional_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                 *'12:00:00'*,               *12:00:00.000*,                 *[{"type":"string","connect.default":"00:00:00.000"},"null"]*
+            required_time_no_tz,                    *TIME WITHOUT TIME ZONE NOT NULL*,                                  *'12:00:00'*,               *12:00:00.000*,                 *["null","string"]*
+            required_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,        *'12:00:00'*,               *12:00:00.000*,                 *[{"type":"string","connect.default":"00:00:00.000"},"null"]*
+            optional_time_tz,                       *TIME WITH TIME ZONE*,                                              *'12:00:00'*,               *32400000*,                     *["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]*
+            optional_time_tz_with_default,          *TIME WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                    *'12:00:00'*,               *32400000*,                     *["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]*
+            required_time_tz,                       *TIME WITH TIME ZONE NOT NULL*,                                     *'12:00:00'*,               *32400000*,                     *["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]*
+            required_time_tz_with_default,          *TIME WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,           *'12:00:00'*,               *32400000*,                     *["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]*
+            """)
+    public void convertTypesAndValuesUsingConverter(
+            String testCase,
+            String jdbcType,
+            String inputValue,
+            String expectedValue,
+            String expectedAvroType
+    ) {
+        var topicPrefix = testCase;
+        var publication = testCase;
+        var table = String.format("public.%s", testCase);
+        var topic = String.format("%s.%s", topicPrefix, table);
+        var subject = String.format("%s.%s-value", topicPrefix, table);
 
-        debeziumHelper.setupPublication(testName);
-        debeziumHelper.executeSql("""
-                CREATE TABLE IF NOT EXISTS public.temporal
-                (
-                    id                                 BIGSERIAL PRIMARY KEY,
-
-                    timestamp_no_tz                    TIMESTAMP WITHOUT TIME ZONE,
-                    timestamp_no_tz_not_null           TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-                    timestamp_no_tz_not_null_default   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    timestamp_no_tz_default            TIMESTAMP WITHOUT TIME ZONE          DEFAULT CURRENT_TIMESTAMP,
-
-                    timestamp_with_tz                  TIMESTAMP WITH TIME ZONE,
-                    timestamp_with_tz_not_null         TIMESTAMP WITH TIME ZONE    NOT NULL,
-                    timestamp_with_tz_not_null_default TIMESTAMP WITH TIME ZONE    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    timestamp_with_tz_default          TIMESTAMP WITH TIME ZONE             DEFAULT CURRENT_TIMESTAMP,
-
-                    date                               DATE,
-                    date_not_null                      DATE                        NOT NULL,
-                    date_not_null_default              DATE                        NOT NULL DEFAULT NOW(),
-                    date_default                       DATE                                 DEFAULT NOW(),
-
-                    time_no_tz                         TIME WITHOUT TIME ZONE,
-                    time_no_tz_not_null                TIME WITHOUT TIME ZONE      NOT NULL,
-                    time_no_tz_not_null_default        TIME WITHOUT TIME ZONE      NOT NULL DEFAULT CURRENT_TIME,
-                    time_no_tz_default                 TIME WITHOUT TIME ZONE               DEFAULT CURRENT_TIME,
-
-                    time_with_tz                       TIME WITH TIME ZONE,
-                    time_with_tz_not_null              TIME WITH TIME ZONE         NOT NULL,
-                    time_with_tz_not_null_default      TIME WITH TIME ZONE         NOT NULL DEFAULT CURRENT_TIME,
-                    time_with_tz_default               TIME WITH TIME ZONE                  DEFAULT CURRENT_TIME
-                );
-                """);
-        debeziumHelper.addTableToPublication(testName, "public.temporal");
-        debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, testName, testName, ignored -> {});
-        debeziumHelper.executeSql("""
-                INSERT INTO public.temporal(timestamp_no_tz,
-                                      timestamp_no_tz_not_null,
-                                      timestamp_no_tz_not_null_default,
-                                      timestamp_no_tz_default,
-                                      timestamp_with_tz,
-                                      timestamp_with_tz_not_null,
-                                      timestamp_with_tz_not_null_default,
-                                      timestamp_with_tz_default,
-                                      date,
-                                      date_not_null,
-                                      date_not_null_default,
-                                      date_default,
-                                      time_no_tz,
-                                      time_no_tz_not_null,
-                                      time_no_tz_not_null_default,
-                                      time_no_tz_default,
-                                      time_with_tz,
-                                      time_with_tz_not_null,
-                                      time_with_tz_not_null_default,
-                                      time_with_tz_default)
-                VALUES (CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME);
-                """);
-
-        var msg = debeziumHelper.readAvroMessages(String.format("%s.public.temporal", testName), 1);
-        assertEquals(1, msg.size());
-        var schema = debeziumHelper.getLatestSchema(String.format("%s.public.temporal-value", testName));
-        //TODO: validate schema
-    }
-
-    @Test
-    public void debeziumPostgresConnectorWithTimestampConverterShouldChangeSchemaForTemporalTypes() {
-        var testName = "with_converter";
-
-        debeziumHelper.setupPublication(testName);
-        debeziumHelper.executeSql("""
-                CREATE TABLE IF NOT EXISTS public.temporal
-                (
-                    id                                 BIGSERIAL PRIMARY KEY,
-
-                    timestamp_no_tz                    TIMESTAMP WITHOUT TIME ZONE,
-                    timestamp_no_tz_not_null           TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-                    timestamp_no_tz_not_null_default   TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    timestamp_no_tz_default            TIMESTAMP WITHOUT TIME ZONE          DEFAULT CURRENT_TIMESTAMP,
-
-                    timestamp_with_tz                  TIMESTAMP WITH TIME ZONE,
-                    timestamp_with_tz_not_null         TIMESTAMP WITH TIME ZONE    NOT NULL,
-                    timestamp_with_tz_not_null_default TIMESTAMP WITH TIME ZONE    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    timestamp_with_tz_default          TIMESTAMP WITH TIME ZONE             DEFAULT CURRENT_TIMESTAMP,
-
-                    date                               DATE,
-                    date_not_null                      DATE                        NOT NULL,
-                    date_not_null_default              DATE                        NOT NULL DEFAULT NOW(),
-                    date_default                       DATE                                 DEFAULT NOW(),
-
-                    time_no_tz                         TIME WITHOUT TIME ZONE,
-                    time_no_tz_not_null                TIME WITHOUT TIME ZONE      NOT NULL,
-                    time_no_tz_not_null_default        TIME WITHOUT TIME ZONE      NOT NULL DEFAULT CURRENT_TIME,
-                    time_no_tz_default                 TIME WITHOUT TIME ZONE               DEFAULT CURRENT_TIME,
-
-                    time_with_tz                       TIME WITH TIME ZONE,
-                    time_with_tz_not_null              TIME WITH TIME ZONE         NOT NULL,
-                    time_with_tz_not_null_default      TIME WITH TIME ZONE         NOT NULL DEFAULT CURRENT_TIME,
-                    time_with_tz_default               TIME WITH TIME ZONE                  DEFAULT CURRENT_TIME
-                );
-                """);
-        debeziumHelper.addTableToPublication(testName, "public.temporal");
-        debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, testName, testName, connector -> {
+        debeziumHelper.setupPublication(testCase);
+        debeziumHelper.executeSql(String.format("CREATE TABLE IF NOT EXISTS %s (id BIGSERIAL PRIMARY KEY, value %s)", table, jdbcType));
+        debeziumHelper.addTableToPublication(publication, table);
+        debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
             connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
         });
-        debeziumHelper.executeSql("""
-                INSERT INTO public.temporal(timestamp_no_tz,
-                                      timestamp_no_tz_not_null,
-                                      timestamp_no_tz_not_null_default,
-                                      timestamp_no_tz_default,
-                                      timestamp_with_tz,
-                                      timestamp_with_tz_not_null,
-                                      timestamp_with_tz_not_null_default,
-                                      timestamp_with_tz_default,
-                                      date,
-                                      date_not_null,
-                                      date_not_null_default,
-                                      date_default,
-                                      time_no_tz,
-                                      time_no_tz_not_null,
-                                      time_no_tz_not_null_default,
-                                      time_no_tz_default,
-                                      time_with_tz,
-                                      time_with_tz_not_null,
-                                      time_with_tz_not_null_default,
-                                      time_with_tz_default)
-                VALUES (CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIMESTAMP,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME,
-                        CURRENT_TIME);
-                """);
+        debeziumHelper.executeSql(String.format("INSERT INTO %s(value) VALUES (%s)", table, inputValue));
 
-        var msg = debeziumHelper.readAvroMessages(String.format("%s.public.temporal", testName), 1);
-        assertEquals(1, msg.size());
-        var schema = debeziumHelper.getLatestSchema(String.format("%s.public.temporal-value", testName));
-        //TODO: validate schema
+        var msg = debeziumHelper.readAvroMessages(topic, 1);
+        var schema = debeziumHelper.getLatestSchema(subject);
+
+        assertEquals(expectedValue, msg.getFirst().getNestedRecord("after").get("value").toString());
+        assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
     }
 }
