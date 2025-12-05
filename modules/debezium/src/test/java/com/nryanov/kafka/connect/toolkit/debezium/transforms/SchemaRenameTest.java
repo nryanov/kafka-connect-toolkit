@@ -55,9 +55,9 @@ public class SchemaRenameTest {
 
         var schema = debeziumHelper.getLatestSchema("without-transformation.public.data-value");
 
-        assertEquals("without_transformation.public.data.Envelope", schema.getFullName());
-        assertEquals("without_transformation.public.data.Value", schema.getField("before").schema().getTypes().getLast().getFullName());
-        assertEquals("without_transformation.public.data.Value", schema.getField("after").schema().getTypes().getLast().getFullName());
+        assertEquals("without_transformation.public.data.Envelope", schema.schema().getFullName());
+        assertEquals("without_transformation.public.data.Value", schema.before().getFullName());
+        assertEquals("without_transformation.public.data.Value", schema.after().getFullName());
     }
 
     @Test
@@ -85,8 +85,8 @@ public class SchemaRenameTest {
 
         var schema = debeziumHelper.getLatestSchema("with-transformation.public.data-value");
 
-        assertEquals("with_transformation.public.data.Envelope", schema.getFullName());
-        assertEquals("new_schema_name.new_value_name", schema.getField("before").schema().getTypes().getLast().getFullName());
-        assertEquals("new_schema_name.new_value_name", schema.getField("after").schema().getTypes().getLast().getFullName());
+        assertEquals("with_transformation.public.data.Envelope", schema.schema().getFullName());
+        assertEquals("new_schema_name.new_value_name", schema.before().getFullName());
+        assertEquals("new_schema_name.new_value_name", schema.after().getFullName());
     }
 }

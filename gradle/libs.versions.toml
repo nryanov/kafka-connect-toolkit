@@ -22,6 +22,7 @@ debezium-api = { group = "io.debezium", name = "debezium-api", version.ref = "de
 # test dependencies
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
 junit = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+junit-params = { group = "org.junit.jupiter", name = "junit-jupiter-params", version.ref = "junit" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit-platform" }
 
 slf4j = { group = "org.slf4j", name = "slf4j-api", version.ref = "slfj4" }

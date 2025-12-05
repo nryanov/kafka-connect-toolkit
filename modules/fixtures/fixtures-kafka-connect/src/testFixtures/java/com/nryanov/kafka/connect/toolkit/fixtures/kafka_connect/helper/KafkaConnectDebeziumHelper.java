@@ -10,12 +10,12 @@ import com.nryanov.kafka.connect.toolkit.fixtures.kafka_connect.KafkaConnectFixt
 import com.nryanov.kafka.connect.toolkit.fixtures.kafka.helper.KafkaAdminHelper;
 import com.nryanov.kafka.connect.toolkit.fixtures.kafka.model.AvroMessage;
 import com.nryanov.kafka.connect.toolkit.fixtures.kafka.model.RawMessage;
+import com.nryanov.kafka.connect.toolkit.fixtures.kafka_connect.model.DebeziumSchema;
 import com.nryanov.kafka.connect.toolkit.fixtures.postgres.PostgresFixtureContainer;
 import com.nryanov.kafka.connect.toolkit.fixtures.postgres.helper.PostgresHelper;
 import com.nryanov.kafka.connect.toolkit.fixtures.schema_registry.SchemaRegistryFixtureContainer;
 import com.nryanov.kafka.connect.toolkit.fixtures.schema_registry.helper.SchemaRegistryHelper;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
-import org.apache.avro.Schema;
 
 import java.time.Duration;
 import java.util.List;
@@ -267,12 +267,12 @@ public class KafkaConnectDebeziumHelper {
         return schemaRegistryHelper.subjects();
     }
 
-    public Schema getLatestSchema(String subject) {
-        return schemaRegistryHelper.getLatestSchema(subject);
+    public DebeziumSchema getLatestSchema(String subject) {
+        return new DebeziumSchema(schemaRegistryHelper.getLatestSchema(subject));
     }
 
-    public Schema getSchema(String subject, int version) {
-        return schemaRegistryHelper.getSubjectSchemaByVersions(subject, version);
+    public DebeziumSchema getSchema(String subject, int version) {
+        return new DebeziumSchema(schemaRegistryHelper.getSubjectSchemaByVersions(subject, version));
     }
 
     public List<Integer> getSubjectVersions(String subject) {
