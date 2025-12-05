@@ -140,7 +140,7 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
 
             return switch (rawValue) {
                 case String str -> {
-                    var timestamp = OffsetTime.parse(str, TIME_WITH_TIMEZONE_FORMATTER);
+                    var timestamp = OffsetTime.parse(str, TIME_WITH_TIMEZONE_FORMATTER).withOffsetSameInstant(ZoneOffset.UTC);
                     yield  Date.from(Instant.ofEpochMilli(timestamp.get(ChronoField.MILLI_OF_DAY)));
                 }
                 case OffsetTime ot -> Date.from(Instant.ofEpochMilli(ot.get(ChronoField.MILLI_OF_DAY)));
