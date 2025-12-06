@@ -133,6 +133,46 @@ public class TimestampConverterTest {
 
     @ParameterizedTest
     @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
+            # CASE                                  JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                  EXPECTED_AVRO_TYPE                                                          SNAPSHOT
+            optional_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 12:00:00'*,    *2025-01-01T18:00:00.000*,      *["null","string"]*,                                                        NONE
+            optional_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,            *'2025-01-01 14:00:00'*,    *2025-01-01T20:00:00.000*,      *[{"type":"string","connect.default":"1970-01-01T06:00:00.000"},"null"]*,   NONE
+            required_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE NOT NULL*,                             *'2025-01-01 16:00:00'*,    *2025-01-01T22:00:00.000*,      *["null","string"]*,                                                        NONE
+            required_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,   *'2025-01-01 18:00:00'*,    *2025-01-02T00:00:00.000*,      *[{"type":"string","connect.default":"1970-01-01T06:00:00.000"},"null"]*,   NONE
+            optional_timestamp_no_tz_blocking,      *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 20:00:00'*,    *2025-01-02T02:00:00.000*,      *["null","string"]*,                                                        BLOCKING
+            optional_timestamp_no_tz_incremental,   *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 22:00:00'*,    *2025-01-02T04:00:00.000*,      *["null","string"]*,                                                        INCREMENTAL
+            """)
+    public void convertTimestampWithoutTimezoneWithShiftUsingConverter(
+            String testCase,
+            String jdbcType,
+            String inputValue,
+            String expectedValue,
+            String expectedAvroType,
+            String snapshot
+    ) {
+        var topicPrefix = testCase;
+        var publication = testCase;
+        var table = String.format("public.%s", testCase);
+        var topic = String.format("%s.%s", topicPrefix, table);
+        var subject = String.format("%s.%s-value", topicPrefix, table);
+
+        setupPublication(testCase, table, jdbcType, publication);
+        debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
+            connector.with("converters", "timestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.timestamp.shift", "+06:00");
+        });
+        insertData(table, inputValue);
+        conditionallyTriggerSnapshot(snapshot, topic, table);
+
+        var msg = debeziumHelper.readAvroMessages(topic, 1);
+        var schema = debeziumHelper.getLatestSchema(subject);
+
+        assertEquals(expectedValue, msg.getFirst().getNestedRecord("after").get("value").toString());
+        assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
             # CASE                                  JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                  EXPECTED_AVRO_TYPE                                                                                                                                              SNAPSHOT
             optional_timestamp_tz,                  *TIMESTAMP WITH TIME ZONE*,                                         *'2025-01-01 12:00:00'*,    *1735722000000*,                *["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}]*,                       NONE
             optional_timestamp_tz_with_default,     *TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,               *'2025-01-01 12:00:00'*,    *1735722000000*,                *[{"type":"long","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"},"null"]*,   NONE
@@ -237,6 +277,46 @@ public class TimestampConverterTest {
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
             connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+        });
+        insertData(table, inputValue);
+        conditionallyTriggerSnapshot(snapshot, topic, table);
+
+        var msg = debeziumHelper.readAvroMessages(topic, 1);
+        var schema = debeziumHelper.getLatestSchema(subject);
+
+        assertEquals(expectedValue, msg.getFirst().getNestedRecord("after").get("value").toString());
+        assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
+            # CASE                                  JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                  EXPECTED_AVRO_TYPE                                              SNAPSHOT
+            optional_time_no_tz,                    *TIME WITHOUT TIME ZONE*,                                           *'12:00:00'*,               *08:00:00.000*,                 *["null","string"]*,                                            NONE
+            optional_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                 *'10:00:00'*,               *06:00:00.000*,                 *[{"type":"string","connect.default":"20:00:00.000"},"null"]*,  NONE
+            required_time_no_tz,                    *TIME WITHOUT TIME ZONE NOT NULL*,                                  *'08:00:00'*,               *04:00:00.000*,                 *["null","string"]*,                                            NONE
+            required_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,        *'06:00:00'*,               *02:00:00.000*,                 *[{"type":"string","connect.default":"20:00:00.000"},"null"]*,  NONE
+            optional_time_no_tz_blocking,           *TIME WITHOUT TIME ZONE*,                                           *'04:00:00'*,               *00:00:00.000*,                 *["null","string"]*,                                            BLOCKING
+            optional_time_no_tz_incremental,        *TIME WITHOUT TIME ZONE*,                                           *'02:00:00'*,               *22:00:00.000*,                 *["null","string"]*,                                            INCREMENTAL
+            """)
+    public void convertTimeWithoutTimezoneWithShiftConverter(
+            String testCase,
+            String jdbcType,
+            String inputValue,
+            String expectedValue,
+            String expectedAvroType,
+            String snapshot
+    ) {
+        var topicPrefix = testCase;
+        var publication = testCase;
+        var table = String.format("public.%s", testCase);
+        var topic = String.format("%s.%s", topicPrefix, table);
+        var subject = String.format("%s.%s-value", topicPrefix, table);
+
+        setupPublication(testCase, table, jdbcType, publication);
+        debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
+            connector.with("converters", "timestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.time.shift", "-04:00");
         });
         insertData(table, inputValue);
         conditionallyTriggerSnapshot(snapshot, topic, table);

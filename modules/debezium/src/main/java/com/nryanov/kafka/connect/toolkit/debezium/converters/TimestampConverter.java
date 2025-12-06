@@ -25,8 +25,17 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
     private static final DateTimeFormatter TIME_WITHOUT_TIMEZONE_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
     private static final DateTimeFormatter TIME_WITH_TIMEZONE_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss[.][SSSSSSSSS][SSSSSSS][SSSSSS][SSSSS][SSSS][SSS][SS][S][''][XXX][XX][X]");
 
+    private ZoneOffset timestampShift;
+    private ZoneOffset timeShift;
+
     @Override
-    public void configure(Properties props) {}
+    public void configure(Properties props) {
+        var timestampShiftRaw = props.getProperty("timestamp.shift", "Z");
+        var timeShiftRaw = props.getProperty("time.shift", "Z");
+
+        this.timestampShift = ZoneOffset.of(timestampShiftRaw);
+        this.timeShift = ZoneOffset.of(timeShiftRaw);
+    }
 
     @Override
     public void converterFor(RelationalColumn column, ConverterRegistration<SchemaBuilder> registration) {
@@ -55,10 +64,10 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
                     var timestamp = LocalDateTime.parse(str);
                     yield DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(timestamp);
                 }
-                case java.sql.Timestamp ts -> DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(ts.toInstant().atOffset(ZoneOffset.UTC));
-                case LocalDateTime ldt -> DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(ldt);
-                case Instant odt -> DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(odt.atOffset(ZoneOffset.UTC));
-                case Long l -> DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(LocalDateTime.ofEpochSecond(l, 0, ZoneOffset.UTC));
+                case java.sql.Timestamp ts -> DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(ts.toInstant().atOffset(ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
+                case LocalDateTime ldt -> DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(ldt.plusSeconds(timestampShift.getTotalSeconds()));
+                case Instant odt -> DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(odt.atOffset(ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
+                case Long l -> DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(LocalDateTime.ofEpochSecond(l, 0, ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
                 default -> throw new IllegalArgumentException("Unexpected type for timestamp: " + rawValue.getClass().getName() + " in column " + column.name());
             };
         });
@@ -118,13 +127,13 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
 
             return switch (rawValue) {
                 case String str -> {
-                    var timestamp = LocalTime.parse(str);
+                    var timestamp = LocalTime.parse(str).plusSeconds(timeShift.getTotalSeconds());
                     yield TIME_WITHOUT_TIMEZONE_FORMATTER.format(timestamp);
                 }
-                case java.sql.Time time -> TIME_WITHOUT_TIMEZONE_FORMATTER.format(time.toLocalTime());
-                case LocalTime lt -> TIME_WITHOUT_TIMEZONE_FORMATTER.format(lt);
-                case Instant odt -> TIME_WITHOUT_TIMEZONE_FORMATTER.format(odt.atOffset(ZoneOffset.UTC));
-                case Long l -> TIME_WITHOUT_TIMEZONE_FORMATTER.format(LocalTime.ofSecondOfDay(l));
+                case java.sql.Time time -> TIME_WITHOUT_TIMEZONE_FORMATTER.format(time.toLocalTime().plusSeconds(timeShift.getTotalSeconds()));
+                case LocalTime lt -> TIME_WITHOUT_TIMEZONE_FORMATTER.format(lt.plusSeconds(timeShift.getTotalSeconds()));
+                case Instant odt -> TIME_WITHOUT_TIMEZONE_FORMATTER.format(odt.atOffset(ZoneOffset.UTC).plusSeconds(timeShift.getTotalSeconds()));
+                case Long l -> TIME_WITHOUT_TIMEZONE_FORMATTER.format(LocalTime.ofSecondOfDay(l).plusSeconds(timeShift.getTotalSeconds()));
                 default -> throw new IllegalArgumentException("Unexpected type for time: " + rawValue.getClass().getName() + " in column " + column.name());
             };
         });
