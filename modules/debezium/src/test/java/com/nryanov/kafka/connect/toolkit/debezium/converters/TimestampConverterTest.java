@@ -133,13 +133,13 @@ public class TimestampConverterTest {
 
     @ParameterizedTest
     @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
-            # CASE                                  JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                  EXPECTED_AVRO_TYPE                                                          SNAPSHOT
-            optional_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 12:00:00'*,    *2025-01-01T18:00:00.000*,      *["null","string"]*,                                                        NONE
-            optional_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,            *'2025-01-01 14:00:00'*,    *2025-01-01T20:00:00.000*,      *[{"type":"string","connect.default":"1970-01-01T06:00:00.000"},"null"]*,   NONE
-            required_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE NOT NULL*,                             *'2025-01-01 16:00:00'*,    *2025-01-01T22:00:00.000*,      *["null","string"]*,                                                        NONE
-            required_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,   *'2025-01-01 18:00:00'*,    *2025-01-02T00:00:00.000*,      *[{"type":"string","connect.default":"1970-01-01T06:00:00.000"},"null"]*,   NONE
-            optional_timestamp_no_tz_blocking,      *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 20:00:00'*,    *2025-01-02T02:00:00.000*,      *["null","string"]*,                                                        BLOCKING
-            optional_timestamp_no_tz_incremental,   *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 22:00:00'*,    *2025-01-02T04:00:00.000*,      *["null","string"]*,                                                        INCREMENTAL
+            # CASE                                        JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                  EXPECTED_AVRO_TYPE                                                          SNAPSHOT
+            shift_optional_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 12:00:00'*,    *2025-01-01T18:00:00.000*,      *["null","string"]*,                                                        NONE
+            shift_optional_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,            *'2025-01-01 14:00:00'*,    *2025-01-01T20:00:00.000*,      *[{"type":"string","connect.default":"1970-01-01T06:00:00.000"},"null"]*,   NONE
+            shift_required_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE NOT NULL*,                             *'2025-01-01 16:00:00'*,    *2025-01-01T22:00:00.000*,      *["null","string"]*,                                                        NONE
+            shift_required_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,   *'2025-01-01 18:00:00'*,    *2025-01-02T00:00:00.000*,      *[{"type":"string","connect.default":"1970-01-01T06:00:00.000"},"null"]*,   NONE
+            shift_optional_timestamp_no_tz_blocking,      *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 20:00:00'*,    *2025-01-02T02:00:00.000*,      *["null","string"]*,                                                        BLOCKING
+            shift_optional_timestamp_no_tz_incremental,   *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 22:00:00'*,    *2025-01-02T04:00:00.000*,      *["null","string"]*,                                                        INCREMENTAL
             """)
     public void convertTimestampWithoutTimezoneWithShiftUsingConverter(
             String testCase,
@@ -290,13 +290,13 @@ public class TimestampConverterTest {
 
     @ParameterizedTest
     @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
-            # CASE                                  JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                  EXPECTED_AVRO_TYPE                                              SNAPSHOT
-            optional_time_no_tz,                    *TIME WITHOUT TIME ZONE*,                                           *'12:00:00'*,               *08:00:00.000*,                 *["null","string"]*,                                            NONE
-            optional_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                 *'10:00:00'*,               *06:00:00.000*,                 *[{"type":"string","connect.default":"20:00:00.000"},"null"]*,  NONE
-            required_time_no_tz,                    *TIME WITHOUT TIME ZONE NOT NULL*,                                  *'08:00:00'*,               *04:00:00.000*,                 *["null","string"]*,                                            NONE
-            required_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,        *'06:00:00'*,               *02:00:00.000*,                 *[{"type":"string","connect.default":"20:00:00.000"},"null"]*,  NONE
-            optional_time_no_tz_blocking,           *TIME WITHOUT TIME ZONE*,                                           *'04:00:00'*,               *00:00:00.000*,                 *["null","string"]*,                                            BLOCKING
-            optional_time_no_tz_incremental,        *TIME WITHOUT TIME ZONE*,                                           *'02:00:00'*,               *22:00:00.000*,                 *["null","string"]*,                                            INCREMENTAL
+            # CASE                                        JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                  EXPECTED_AVRO_TYPE                                              SNAPSHOT
+            shift_optional_time_no_tz,                    *TIME WITHOUT TIME ZONE*,                                           *'12:00:00'*,               *08:00:00.000*,                 *["null","string"]*,                                            NONE
+            shift_optional_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                 *'10:00:00'*,               *06:00:00.000*,                 *[{"type":"string","connect.default":"20:00:00.000"},"null"]*,  NONE
+            shift_required_time_no_tz,                    *TIME WITHOUT TIME ZONE NOT NULL*,                                  *'08:00:00'*,               *04:00:00.000*,                 *["null","string"]*,                                            NONE
+            shift_required_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP*,        *'06:00:00'*,               *02:00:00.000*,                 *[{"type":"string","connect.default":"20:00:00.000"},"null"]*,  NONE
+            shift_optional_time_no_tz_blocking,           *TIME WITHOUT TIME ZONE*,                                           *'04:00:00'*,               *00:00:00.000*,                 *["null","string"]*,                                            BLOCKING
+            shift_optional_time_no_tz_incremental,        *TIME WITHOUT TIME ZONE*,                                           *'02:00:00'*,               *22:00:00.000*,                 *["null","string"]*,                                            INCREMENTAL
             """)
     public void convertTimeWithoutTimezoneWithShiftConverter(
             String testCase,
