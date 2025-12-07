@@ -367,6 +367,52 @@ public class TimestampConverterTest {
         assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
     }
 
+    @ParameterizedTest
+    @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
+            # CASE                                            JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                    EXPECTED_AVRO_TYPE
+            custom_output_type_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 12:00:00'*,    *1735732800000*,                  *["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}]*
+            custom_output_type_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,            *'2025-01-01 12:00:00'*,    *1735732800000*,                  *[{"type":"long","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"},"null"]*
+            custom_output_type_timestamp_tz,                  *TIMESTAMP WITH TIME ZONE*,                                         *'2025-01-01 12:00:00'*,    *2025-01-01T09:00:00.000Z*,       *["null","string"]*
+            custom_output_type_timestamp_tz_with_default,     *TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,               *'2025-01-01 12:00:00'*,    *2025-01-01T09:00:00.000Z*,       *[{"type":"string","connect.default":"1970-01-01T00:00:00.000Z"},"null"]*
+            custom_output_type_date,                          *DATE*,                                                             *'2025-01-01'*,             *2025-01-01*,                     *["null","string"]*
+            custom_output_type_date_with_default,             *DATE DEFAULT NOW()*,                                               *'2025-01-01'*,             *2025-01-01*,                     *[{"type":"string","connect.default":"1970-01-01"},"null"]*
+            custom_output_type_time_no_tz,                    *TIME WITHOUT TIME ZONE*,                                           *'12:00:00'*,               *43200000*,                       *["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]*
+            custom_output_type_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                 *'12:00:00'*,               *43200000*,                       *[{"type":"int","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"},"null"]*
+            custom_output_type_time_tz,                       *TIME WITH TIME ZONE*,                                              *'12:00:00'*,               *09:00:00.000Z*,                  *["null","string"]*
+            custom_output_type_time_tz_with_default,          *TIME WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                    *'12:00:00'*,               *09:00:00.000Z*,                  *["null","string"]*
+            """)
+    public void convertValuesUsingConverterWithCustomOutputTypes(
+            String testCase,
+            String jdbcType,
+            String inputValue,
+            String expectedValue,
+            String expectedAvroType
+    ) {
+        var topicPrefix = testCase;
+        var publication = testCase;
+        var table = String.format("public.%s", testCase);
+        var topic = String.format("%s.%s", topicPrefix, table);
+        var subject = String.format("%s.%s-value", topicPrefix, table);
+
+        setupPublication(testCase, table, jdbcType, publication);
+        debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
+            connector.with("converters", "timestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.timestamp.type", "TIMESTAMP");
+            connector.with("timestampConverter.timestamptz.type", "STRING");
+            connector.with("timestampConverter.date.type", "STRING");
+            connector.with("timestampConverter.time.type", "TIME");
+            connector.with("timestampConverter.timetz.type", "STRING");
+        });
+        insertData(table, inputValue);
+
+        var msg = debeziumHelper.readAvroMessages(topic, 1);
+        var schema = debeziumHelper.getLatestSchema(subject);
+
+        assertEquals(expectedValue, msg.getFirst().getNestedRecord("after").get("value").toString());
+        assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
+    }
+
     private void setupPublication(String testCase, String table, String jdbcType, String publication) {
         debeziumHelper.setupPublication(testCase);
         debeziumHelper.executeSql(String.format("CREATE TABLE IF NOT EXISTS %s (id BIGSERIAL PRIMARY KEY, value %s)", table, jdbcType));
