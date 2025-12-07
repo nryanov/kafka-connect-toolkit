@@ -372,14 +372,14 @@ public class TimestampConverterTest {
             # CASE                                            JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                    EXPECTED_AVRO_TYPE
             custom_output_type_timestamp_no_tz,               *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 12:00:00'*,    *1735732800000*,                  *["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}]*
             custom_output_type_timestamp_no_tz_with_default,  *TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,            *'2025-01-01 12:00:00'*,    *1735732800000*,                  *[{"type":"long","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"},"null"]*
-            custom_output_type_timestamp_tz,                  *TIMESTAMP WITH TIME ZONE*,                                         *'2025-01-01 12:00:00'*,    *2025-01-01T09:00:00.000000Z*,    *["null",{"type":"string","connect.version":1,"connect.name":"io.debezium.time.ZonedTimestamp"}]*
-            custom_output_type_timestamp_tz_with_default,     *TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,               *'2025-01-01 12:00:00'*,    *2025-01-01T09:00:00.000000Z*,    *[{"type":"string","connect.version":1,"connect.default":"1970-01-01T00:00:00.000000Z","connect.name":"io.debezium.time.ZonedTimestamp"},"null"]*
-            custom_output_type_date,                          *DATE*,                                                             *'2025-01-01'*,             *20089*,                          *["null",{"type":"int","connect.version":1,"connect.name":"io.debezium.time.Date"}]*
-            custom_output_type_date_with_default,             *DATE DEFAULT NOW()*,                                               *'2025-01-01'*,             *20089*,                          *[{"type":"int","connect.version":1,"connect.default":0,"connect.name":"io.debezium.time.Date"},"null"]*
-            custom_output_type_time_no_tz,                    *TIME WITHOUT TIME ZONE*,                                           *'12:00:00'*,               *43200000000*,                    *["null",{"type":"long","connect.version":1,"connect.name":"io.debezium.time.MicroTime"}]*
-            custom_output_type_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                 *'12:00:00'*,               *43200000000*,                    *[{"type":"long","connect.version":1,"connect.default":0,"connect.name":"io.debezium.time.MicroTime"},"null"]*
-            custom_output_type_time_tz,                       *TIME WITH TIME ZONE*,                                              *'12:00:00'*,               *09:00:00Z*,                      *["null",{"type":"string","connect.version":1,"connect.name":"io.debezium.time.ZonedTime"}]*
-            custom_output_type_time_tz_with_default,          *TIME WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                    *'12:00:00'*,               *09:00:00Z*,                      *["null",{"type":"string","connect.version":1,"connect.name":"io.debezium.time.ZonedTime"}]*
+            custom_output_type_timestamp_tz,                  *TIMESTAMP WITH TIME ZONE*,                                         *'2025-01-01 12:00:00'*,    *2025-01-01T09:00:00.000Z*,       *["null","string"]*
+            custom_output_type_timestamp_tz_with_default,     *TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,               *'2025-01-01 12:00:00'*,    *2025-01-01T09:00:00.000Z*,       *[{"type":"string","connect.default":"1970-01-01T00:00:00.000Z"},"null"]*
+            custom_output_type_date,                          *DATE*,                                                             *'2025-01-01'*,             *2025-01-01*,                     *["null","string"]*
+            custom_output_type_date_with_default,             *DATE DEFAULT NOW()*,                                               *'2025-01-01'*,             *2025-01-01*,                     *[{"type":"string","connect.default":"1970-01-01"},"null"]*
+            custom_output_type_time_no_tz,                    *TIME WITHOUT TIME ZONE*,                                           *'12:00:00'*,               *43200000*,                       *["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]*
+            custom_output_type_time_no_tz_with_default,       *TIME WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                 *'12:00:00'*,               *43200000*,                       *[{"type":"int","connect.version":1,"connect.default":0,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"},"null"]*
+            custom_output_type_time_tz,                       *TIME WITH TIME ZONE*,                                              *'12:00:00'*,               *09:00:00.000Z*,                  *["null","string"]*
+            custom_output_type_time_tz_with_default,          *TIME WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP*,                    *'12:00:00'*,               *09:00:00.000Z*,                  *["null","string"]*
             """)
     public void convertValuesUsingConverterWithCustomOutputTypes(
             String testCase,
@@ -408,9 +408,6 @@ public class TimestampConverterTest {
 
         var msg = debeziumHelper.readAvroMessages(topic, 1);
         var schema = debeziumHelper.getLatestSchema(subject);
-
-        System.out.println(msg.getFirst().getNestedRecord("after").get("value").toString());
-        System.out.println(schema.after().getField("value").schema().toString());
 
         assertEquals(expectedValue, msg.getFirst().getNestedRecord("after").get("value").toString());
         assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
