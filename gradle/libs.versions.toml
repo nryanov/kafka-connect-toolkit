@@ -18,6 +18,7 @@ logback = "1.5.18"
 kafka-connect = { group = "org.apache.kafka", name = "connect-api", version.ref = "kafka" }
 kafka-transforms = { group = "org.apache.kafka", name = "connect-transforms", version.ref = "kafka" }
 debezium-api = { group = "io.debezium", name = "debezium-api", version.ref = "debezium" }
+postgres-driver = { group = "org.postgresql", name = "postgresql", version.ref = "postgresDriver" }
 
 # test dependencies
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
@@ -34,8 +35,6 @@ testcontainers-core = { group = "org.testcontainers", name = "testcontainers", v
 testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers" }
 testcontainers-redpanda = { group = "org.testcontainers", name = "redpanda", version.ref = "testcontainers" }
 testcontainers-debezium = { group = "io.debezium", name = "debezium-testing-testcontainers", version.ref = "debezium" }
-
-postgres-driver = { group = "org.postgresql", name = "postgresql", version.ref = "postgresDriver" }
 
 jdbi-core = { group = "org.jdbi", name = "jdbi3-core", version.ref = "jdbi" }
 agroal = { group = "io.agroal", name = "agroal-pool", version.ref = "agroal" }

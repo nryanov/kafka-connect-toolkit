@@ -461,6 +461,52 @@ public class TimestampConverterTest {
         assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
     }
 
+    @ParameterizedTest
+    @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
+            # CASE                                                      JDBC_TYPE                                                             VALUE                                           EXPECTED_VALUE                    EXPECTED_AVRO_TYPE
+            array_optional_timestamp_no_tz,                             *TIMESTAMP WITHOUT TIME ZONE[]*,                                      *ARRAY[TIMESTAMP '2025-01-01 12:00:00']*,       *[2025-01-01T12:00:00.000]*,      *["null",{"type":"array","items":["null","string"]}]*
+            array_optional_timestamp_no_tz_wth_null,                    *TIMESTAMP WITHOUT TIME ZONE[]*,                                      *ARRAY[NULL]::TIMESTAMP[]*,                     *[null]*,                         *["null",{"type":"array","items":["null","string"]}]*
+            array_required_timestamp_no_tz,                             *TIMESTAMP WITHOUT TIME ZONE[] NOT NULL*,                             *ARRAY[TIMESTAMP '2025-01-01 12:00:00']*,       *[2025-01-01T12:00:00.000]*,      *["null",{"type":"array","items":["null","string"]}]*
+            array_optional_timestamp_tz,                                *TIMESTAMP WITH TIME ZONE[]*,                                         *ARRAY[TIMESTAMPTZ '2025-01-01 12:00:00']*,     *[1735722000000]*,                *["null",{"type":"array","items":["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}]}]*
+            array_optional_timestamp_tz_with_null,                      *TIMESTAMP WITH TIME ZONE[]*,                                         *ARRAY[NULL]::TIMESTAMPTZ[]*,                   *[null]*,                         *["null",{"type":"array","items":["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}]}]*
+            array_required_timestamp_tz,                                *TIMESTAMP WITH TIME ZONE[] NOT NULL*,                                *ARRAY[TIMESTAMPTZ '2025-01-01 12:00:00']*,     *[1735722000000]*,                *["null",{"type":"array","items":["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}]}]*
+            array_optional_date,                                        *DATE[]*,                                                             *ARRAY[DATE '2025-01-01']*,                     *[20089]*,                        *["null",{"type":"array","items":["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Date","logicalType":"date"}]}]*
+            array_optional_date_with_null,                              *DATE[]*,                                                             *ARRAY[NULL]::DATE[]*,                          *[null]*,                         *["null",{"type":"array","items":["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Date","logicalType":"date"}]}]*
+            array_required_date,                                        *DATE[] NOT NULL*,                                                    *ARRAY[DATE '2025-01-01']*,                     *[20089]*,                        *["null",{"type":"array","items":["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Date","logicalType":"date"}]}]*
+            array_optional_time_no_tz,                                  *TIME WITHOUT TIME ZONE[]*,                                           *ARRAY[TIME '12:00:00']*,                       *[12:00:00.000]*,                 *["null",{"type":"array","items":["null","string"]}]*
+            array_optional_time_no_tz_with_null,                        *TIME WITHOUT TIME ZONE[]*,                                           *ARRAY[NULL]::TIME[]*,                          *[null]*,                         *["null",{"type":"array","items":["null","string"]}]*
+            array_required_time_no_tz,                                  *TIME WITHOUT TIME ZONE[] NOT NULL*,                                  *ARRAY[TIME '12:00:00']*,                       *[12:00:00.000]*,                 *["null",{"type":"array","items":["null","string"]}]*
+            array_optional_time_tz,                                     *TIME WITH TIME ZONE[]*,                                              *ARRAY[TIMETZ '12:00:00']*,                     *[32400000]*,                     *["null",{"type":"array","items":["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]}]*
+            array_optional_time_tz_with_null,                           *TIME WITH TIME ZONE[]*,                                              *ARRAY[NULL]::TIMETZ[]*,                        *[null]*,                         *["null",{"type":"array","items":["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]}]*
+            array_required_time_tz,                                     *TIME WITH TIME ZONE[] NOT NULL*,                                     *ARRAY[TIMETZ '12:00:00']*,                     *[32400000]*,                     *["null",{"type":"array","items":["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]}]*
+            """)
+    public void convertArrayValuesUsingConverter(
+            String testCase,
+            String jdbcType,
+            String inputValue,
+            String expectedValue,
+            String expectedAvroType
+    ) {
+        var topicPrefix = testCase;
+        var publication = testCase;
+        var table = String.format("public.%s", testCase);
+        var topic = String.format("%s.%s", topicPrefix, table);
+        var subject = String.format("%s.%s-value", topicPrefix, table);
+
+        setupPublication(testCase, table, jdbcType, publication);
+        debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
+            connector.with("converters", "timestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+        });
+        insertData(table, inputValue);
+
+        var msg = debeziumHelper.readAvroMessages(topic, 1);
+        var schema = debeziumHelper.getLatestSchema(subject);
+
+        assertEquals(expectedValue, msg.getFirst().getNestedRecord("after").get("value").toString());
+        assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
+    }
+
     private void setupPublication(String testCase, String table, String jdbcType, String publication) {
         debeziumHelper.setupPublication(testCase);
         debeziumHelper.executeSql(String.format("CREATE TABLE IF NOT EXISTS %s (id BIGSERIAL PRIMARY KEY, value %s)", table, jdbcType));
