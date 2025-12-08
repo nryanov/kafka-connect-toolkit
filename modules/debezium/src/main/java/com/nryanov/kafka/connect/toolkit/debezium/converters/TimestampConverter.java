@@ -80,11 +80,17 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
 
     private static final ZoneId UTC = ZoneId.of("UTC");
 
-    private static final DateTimeFormatter DATETIME_WITHOUT_TIMEZONE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
-    private static final DateTimeFormatter DATETIME_WITH_TIMEZONE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(UTC);
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(UTC);
-    private static final DateTimeFormatter TIME_WITHOUT_TIMEZONE_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
-    private static final DateTimeFormatter TIME_WITH_TIMEZONE_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS'Z'").withZone(UTC);
+    private static final String DEFAULT_TIMESTAMP_WITHOUT_TIMEZONE_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSS";
+    private static final String DEFAULT_TIMESTAMP_WITH_TIMEZONE_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
+    private static final String DEFAULT_DATE_PATTERN = "yyyy-MM-dd";
+    private static final String DEFAULT_TIMES_WITHOUT_TIMEZONE_PATTERN = "HH:mm:ss.SSS";
+    private static final String DEFAULT_TIMES_WITH_TIMEZONE_PATTERN = "HH:mm:ss.SSS'Z'";
+
+    private DateTimeFormatter timestampWithoutTimezoneFormatter;
+    private DateTimeFormatter timestampWithTimezoneFormatter;
+    private DateTimeFormatter dateFormatter;
+    private DateTimeFormatter timeWithoutTimezoneFormatter;
+    private DateTimeFormatter timeWithTimezoneFormatter;
 
     private static final DateTimeFormatter TIME_PARSER = DateTimeFormatter.ofPattern("HH:mm:ss[.][SSSSSSSSS][SSSSSSS][SSSSSS][SSSSS][SSSS][SSS][SS][S][''][XXX][XX][X]");
 
@@ -110,6 +116,18 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
 
         this.timestampShift = ZoneOffset.of(timestampShiftRaw);
         this.timeShift = ZoneOffset.of(timeShiftRaw);
+
+        var timestampWithoutTimezonePattern = props.getProperty("timestamp.pattern", DEFAULT_TIMESTAMP_WITHOUT_TIMEZONE_PATTERN);
+        var timestampWithTimezonePattern = props.getProperty("timestamptz.pattern", DEFAULT_TIMESTAMP_WITH_TIMEZONE_PATTERN);
+        var datePattern = props.getProperty("date.pattern", DEFAULT_DATE_PATTERN);
+        var timeWithoutTimezonePattern = props.getProperty("time.pattern", DEFAULT_TIMES_WITHOUT_TIMEZONE_PATTERN);
+        var timeWithTimezonePattern = props.getProperty("timetz.pattern", DEFAULT_TIMES_WITH_TIMEZONE_PATTERN);
+
+        this.timestampWithoutTimezoneFormatter = DateTimeFormatter.ofPattern(timestampWithoutTimezonePattern).withZone(UTC);
+        this.timestampWithTimezoneFormatter = DateTimeFormatter.ofPattern(timestampWithTimezonePattern).withZone(UTC);
+        this.dateFormatter = DateTimeFormatter.ofPattern(datePattern).withZone(UTC);
+        this.timeWithoutTimezoneFormatter = DateTimeFormatter.ofPattern(timeWithoutTimezonePattern).withZone(UTC);
+        this.timeWithTimezoneFormatter = DateTimeFormatter.ofPattern(timeWithTimezonePattern).withZone(UTC);
     }
 
     @Override
@@ -121,8 +139,7 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
                 case "date" -> convertDate(column, registration);
                 case "time" -> convertTime(column, registration);
                 case "timetz" -> convertTimeTz(column, registration);
-                default -> {
-                }
+                default -> {}
             }
         }
     }
@@ -150,13 +167,13 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
                 };
                 case STRING -> switch (rawValue) {
                     case java.sql.Timestamp ts ->
-                            DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(ts.toInstant().atOffset(ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
+                            timestampWithoutTimezoneFormatter.format(ts.toInstant().atOffset(ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
                     case LocalDateTime ldt ->
-                            DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(ldt.plusSeconds(timestampShift.getTotalSeconds()));
+                            timestampWithoutTimezoneFormatter.format(ldt.plusSeconds(timestampShift.getTotalSeconds()));
                     case Instant odt ->
-                            DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(odt.atOffset(ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
+                            timestampWithoutTimezoneFormatter.format(odt.atOffset(ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
                     case Long l ->
-                            DATETIME_WITHOUT_TIMEZONE_FORMATTER.format(LocalDateTime.ofEpochSecond(l, 0, ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
+                            timestampWithoutTimezoneFormatter.format(LocalDateTime.ofEpochSecond(l, 0, ZoneOffset.UTC).plusSeconds(timestampShift.getTotalSeconds()));
                     default ->
                             throw new IllegalArgumentException("Unexpected type for timestamp: " + rawValue.getClass().getName() + " in column " + column.name());
                 };
@@ -189,12 +206,12 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
                 case STRING -> switch (rawValue) {
                     case String ignored -> {
                         var timestamp = OffsetDateTime.parse(rawValue.toString());
-                        yield DATETIME_WITH_TIMEZONE_FORMATTER.format(timestamp);
+                        yield timestampWithTimezoneFormatter.format(timestamp);
                     }
-                    case java.sql.Timestamp ts -> DATETIME_WITH_TIMEZONE_FORMATTER.format(ts.toInstant());
-                    case java.time.ZonedDateTime zdt -> DATETIME_WITH_TIMEZONE_FORMATTER.format(zdt.toInstant());
-                    case OffsetDateTime odt -> DATETIME_WITH_TIMEZONE_FORMATTER.format(odt.toInstant());
-                    case Instant odt -> DATETIME_WITH_TIMEZONE_FORMATTER.format(odt);
+                    case java.sql.Timestamp ts -> timestampWithTimezoneFormatter.format(ts.toInstant());
+                    case java.time.ZonedDateTime zdt -> timestampWithTimezoneFormatter.format(zdt.toInstant());
+                    case OffsetDateTime odt -> timestampWithTimezoneFormatter.format(odt.toInstant());
+                    case Instant odt -> timestampWithTimezoneFormatter.format(odt);
                     default ->
                             throw new IllegalArgumentException("Unexpected type for timestamptz: " + rawValue.getClass().getName() + " in column " + column.name());
                 };
@@ -226,13 +243,13 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
                 case STRING -> switch (rawValue) {
                     case String ignored -> {
                         var timestamp = OffsetDateTime.parse(rawValue.toString());
-                        yield DATE_FORMATTER.format(timestamp.toInstant());
+                        yield dateFormatter.format(timestamp.toInstant());
                     }
                     case Integer epochDays ->
-                            DATE_FORMATTER.format(LocalDate.ofEpochDay(epochDays).atStartOfDay(ZoneOffset.UTC).toInstant());
+                            dateFormatter.format(LocalDate.ofEpochDay(epochDays).atStartOfDay(ZoneOffset.UTC).toInstant());
                     case java.sql.Date d ->
-                            DATE_FORMATTER.format(d.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant());
-                    case LocalDate ld -> DATE_FORMATTER.format(ld.atStartOfDay(ZoneOffset.UTC).toInstant());
+                            dateFormatter.format(d.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant());
+                    case LocalDate ld -> dateFormatter.format(ld.atStartOfDay(ZoneOffset.UTC).toInstant());
                     default ->
                             throw new IllegalArgumentException("Unexpected type for date: " + rawValue.getClass().getName() + " in column " + column.name());
                 };
@@ -268,16 +285,16 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
                 case STRING -> switch (rawValue) {
                     case String str -> {
                         var timestamp = LocalTime.parse(str, TIME_PARSER).plusSeconds(timeShift.getTotalSeconds());
-                        yield TIME_WITHOUT_TIMEZONE_FORMATTER.format(timestamp);
+                        yield timeWithoutTimezoneFormatter.format(timestamp);
                     }
                     case java.sql.Time time ->
-                            TIME_WITHOUT_TIMEZONE_FORMATTER.format(time.toLocalTime().plusSeconds(timeShift.getTotalSeconds()));
+                            timeWithoutTimezoneFormatter.format(time.toLocalTime().plusSeconds(timeShift.getTotalSeconds()));
                     case LocalTime lt ->
-                            TIME_WITHOUT_TIMEZONE_FORMATTER.format(lt.plusSeconds(timeShift.getTotalSeconds()));
+                            timeWithoutTimezoneFormatter.format(lt.plusSeconds(timeShift.getTotalSeconds()));
                     case Instant odt ->
-                            TIME_WITHOUT_TIMEZONE_FORMATTER.format(odt.atOffset(ZoneOffset.UTC).plusSeconds(timeShift.getTotalSeconds()));
+                            timeWithoutTimezoneFormatter.format(odt.atOffset(ZoneOffset.UTC).plusSeconds(timeShift.getTotalSeconds()));
                     case Long l ->
-                            TIME_WITHOUT_TIMEZONE_FORMATTER.format(LocalTime.ofSecondOfDay(l).plusSeconds(timeShift.getTotalSeconds()));
+                            timeWithoutTimezoneFormatter.format(LocalTime.ofSecondOfDay(l).plusSeconds(timeShift.getTotalSeconds()));
                     default ->
                             throw new IllegalArgumentException("Unexpected type for time: " + rawValue.getClass().getName() + " in column " + column.name());
                 };
@@ -306,9 +323,9 @@ public class TimestampConverter implements CustomConverter<SchemaBuilder, Relati
                 case STRING -> switch (rawValue) {
                     case String str -> {
                         var timestamp = OffsetTime.parse(str, TIME_PARSER).withOffsetSameInstant(ZoneOffset.UTC);
-                        yield TIME_WITH_TIMEZONE_FORMATTER.format(timestamp);
+                        yield timeWithTimezoneFormatter.format(timestamp);
                     }
-                    case OffsetTime ot -> TIME_WITH_TIMEZONE_FORMATTER.format(ot);
+                    case OffsetTime ot -> timeWithTimezoneFormatter.format(ot);
                     default ->
                             throw new IllegalArgumentException("Unexpected type for timetz: " + rawValue.getClass().getName() + " in column " + column.name());
                 };

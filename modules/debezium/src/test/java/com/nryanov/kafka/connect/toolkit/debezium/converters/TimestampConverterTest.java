@@ -413,6 +413,54 @@ public class TimestampConverterTest {
         assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
     }
 
+    @ParameterizedTest
+    @CsvSource(delimiter = ',', quoteCharacter = '*', textBlock = """
+            # CASE                                            JDBC_TYPE                                                           VALUE                       EXPECTED_VALUE                    EXPECTED_AVRO_TYPE
+            custom_pattern_timestamp_no_tz,                   *TIMESTAMP WITHOUT TIME ZONE*,                                      *'2025-01-01 12:00:00'*,    *2025-01-01T12:00:00Z*,           *["null","string"]*
+            custom_pattern_timestamp_tz,                      *TIMESTAMP WITH TIME ZONE*,                                         *'2025-01-01 12:00:00'*,    *2025-01-01Z*,                    *["null","string"]*
+            custom_pattern_date,                              *DATE*,                                                             *'2025-01-01'*,             *01-01*,                          *["null","string"]*
+            custom_pattern_time_no_tz,                        *TIME WITHOUT TIME ZONE*,                                           *'12:00:00'*,               *00:0O*,                          *["null","string"]*
+            custom_pattern_time_tz,                           *TIME WITH TIME ZONE*,                                              *'12:00:00'*,               *09:00Z*,                         *["null","string"]*
+            """)
+    public void convertValuesUsingConverterWithCustomOutputPattern(
+            String testCase,
+            String jdbcType,
+            String inputValue,
+            String expectedValue,
+            String expectedAvroType
+    ) {
+        var topicPrefix = testCase;
+        var publication = testCase;
+        var table = String.format("public.%s", testCase);
+        var topic = String.format("%s.%s", topicPrefix, table);
+        var subject = String.format("%s.%s-value", topicPrefix, table);
+
+        setupPublication(testCase, table, jdbcType, publication);
+        debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
+            connector.with("converters", "timestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.timestamp.pattern", "yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+            connector.with("timestampConverter.timestamptz.type", "STRING");
+            connector.with("timestampConverter.timestamptz.pattern", "yyyy-MM-dd'Z'");
+
+            connector.with("timestampConverter.date.type", "STRING");
+            connector.with("timestampConverter.date.pattern", "MM-dd");
+
+            connector.with("timestampConverter.time.pattern", "mm:ss");
+
+            connector.with("timestampConverter.timetz.type", "STRING");
+            connector.with("timestampConverter.timetz.pattern", "HH:mm'Z'");
+        });
+        insertData(table, inputValue);
+
+        var msg = debeziumHelper.readAvroMessages(topic, 1);
+        var schema = debeziumHelper.getLatestSchema(subject);
+
+        assertEquals(expectedValue, msg.getFirst().getNestedRecord("after").get("value").toString());
+        assertEquals(expectedAvroType, schema.after().getField("value").schema().toString());
+    }
+
     private void setupPublication(String testCase, String table, String jdbcType, String publication) {
         debeziumHelper.setupPublication(testCase);
         debeziumHelper.executeSql(String.format("CREATE TABLE IF NOT EXISTS %s (id BIGSERIAL PRIMARY KEY, value %s)", table, jdbcType));
