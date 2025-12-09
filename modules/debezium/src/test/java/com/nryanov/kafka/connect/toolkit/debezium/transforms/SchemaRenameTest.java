@@ -74,7 +74,9 @@ public class SchemaRenameTest {
                 connector -> {
                     connector.with("transforms", "schemaRename");
                     connector.with("transforms.schemaRename.type", "com.nryanov.kafka.connect.toolkit.debezium.transforms.SchemaRename");
-                    connector.with("transforms.schemaRename.name", "new_schema_name.new_value_name");
+                    connector.with("transforms.schemaRename.internal.name", "new_internal_schema.internal_payload");
+                    connector.with("transforms.schemaRename.external.name", "new_external_schema.external_payload");
+                    connector.with("transforms.schemaRename.cache.size", 32);
                 }
         );
 
@@ -85,8 +87,8 @@ public class SchemaRenameTest {
 
         var schema = debeziumHelper.getLatestSchema("with-transformation.public.data-value");
 
-        assertEquals("with_transformation.public.data.Envelope", schema.schema().getFullName());
-        assertEquals("new_schema_name.new_value_name", schema.before().getFullName());
-        assertEquals("new_schema_name.new_value_name", schema.after().getFullName());
+        assertEquals("new_external_schema.external_payload", schema.schema().getFullName());
+        assertEquals("new_internal_schema.internal_payload", schema.before().getFullName());
+        assertEquals("new_internal_schema.internal_payload", schema.after().getFullName());
     }
 }
