@@ -25,22 +25,15 @@ public class SchemaRename<R extends ConnectRecord<R>> implements Transformation<
 
     private final static Integer DEFAULT_CACHE_SIZE = 16;
     private final static String CACHE_SIZE_CONFIG = "cache.size";
-    private final static String NEW_EXTERNAL_NAME_CONFIG = "external.name";
     private final static String NEW_INTERNAL_NAME_CONFIG = "internal.name";
     private final static ConfigDef CONFIG_DEF =
             new ConfigDef()
                     .define(
                             NEW_INTERNAL_NAME_CONFIG,
                             ConfigDef.Type.STRING,
-                            ConfigDef.NO_DEFAULT_VALUE,
+                            null,
                             ConfigDef.Importance.HIGH,
-                            "The new name for the internal records in the before and after schemata. If not set, then names remain without change")
-                    .define(
-                            NEW_EXTERNAL_NAME_CONFIG,
-                            ConfigDef.Type.STRING,
-                            ConfigDef.NO_DEFAULT_VALUE,
-                            ConfigDef.Importance.HIGH,
-                            "The new name for the external records. If not set, then name remains without change")
+                            "New name for the internal records in the before and after schemata. If not set, then names remain without change")
                     .define(
                             CACHE_SIZE_CONFIG,
                             ConfigDef.Type.INT,
@@ -49,7 +42,6 @@ public class SchemaRename<R extends ConnectRecord<R>> implements Transformation<
                             ConfigDef.Importance.LOW,
                             "Schema cache size to avoid schema updates for each new schema");
 
-    private String newExternalName;
     private String newInternalName;
     private Cache<Schema, Schema> schemaUpdateCache;
 
@@ -66,7 +58,6 @@ public class SchemaRename<R extends ConnectRecord<R>> implements Transformation<
     public void configure(Map<String, ?> configs) {
         AbstractConfig config = new AbstractConfig(CONFIG_DEF, configs);
 
-        newExternalName = config.getString(NEW_EXTERNAL_NAME_CONFIG);
         newInternalName = config.getString(NEW_INTERNAL_NAME_CONFIG);
         var cacheSize = config.getInt(CACHE_SIZE_CONFIG);
 
@@ -75,59 +66,60 @@ public class SchemaRename<R extends ConnectRecord<R>> implements Transformation<
 
     @Override
     public R apply(R record) {
-        if (record == null || record.valueSchema() == null) return record;
+        if (record == null) return null;
 
-        var beforeField = record.valueSchema().field(BEFORE_FIELD_NAME);
-        var afterField = record.valueSchema().field(AFTER_FIELD_NAME);
+        var valuePart = record.value();
+        var valueSchema = record.valueSchema();
 
-        if (beforeField == null || afterField == null) return record;
+        if (newInternalName != null && !newInternalName.isEmpty()) {
+            if (valuePart == null || valueSchema == null) return record;
 
-        var beforeSchema = beforeField.schema();
-        var afterSchema = afterField.schema();
+            var beforeField = record.valueSchema().field(BEFORE_FIELD_NAME);
+            var afterField = record.valueSchema().field(AFTER_FIELD_NAME);
 
-        if (beforeSchema == null || afterSchema == null) return record;
+            if (beforeField == null || afterField == null) return record;
 
-        var updatedBeforeSchema = updateSchema(beforeSchema);
-        var updatedAfterSchema = updateSchema(afterSchema);
+            var beforeSchema = beforeField.schema();
+            var afterSchema = afterField.schema();
 
-        var recordValue = requireStruct(record.value(), PURPOSE);
+            if (beforeSchema == null || afterSchema == null) return record;
 
-        var beforeValue = recordValue.getStruct(BEFORE_FIELD_NAME);
-        var afterValue = recordValue.getStruct(AFTER_FIELD_NAME);
+            var updatedBeforeSchema = renameSchema(beforeSchema, newInternalName);
+            var updatedAfterSchema = renameSchema(afterSchema, newInternalName);
 
-        var updatedBeforeValue = copyValues(beforeValue, updatedBeforeSchema);
-        var updatedAfterValue = copyValues(afterValue, updatedAfterSchema);
+            var recordValue = requireStruct(valuePart, PURPOSE);
+            var beforeValue = recordValue.getStruct(BEFORE_FIELD_NAME);
+            var afterValue = recordValue.getStruct(AFTER_FIELD_NAME);
 
-        var updatedRecordSchema = replaceBeforeAndAfterSchemata(record.valueSchema(), updatedBeforeSchema, updatedAfterSchema);
-        var updatedRecordValue = replaceBeforeAndAfterValues(record, updatedRecordSchema, updatedBeforeValue, updatedAfterValue);
+            var updatedBeforeValue = copyValues(beforeValue, updatedBeforeSchema);
+            var updatedAfterValue = copyValues(afterValue, updatedAfterSchema);
 
-        return record.newRecord(
-                record.topic(),
-                record.kafkaPartition(),
-                record.keySchema(),
-                record.key(),
-                updatedRecordSchema,
-                updatedRecordValue,
-                record.timestamp());
+            var updatedRecordSchema = replaceBeforeAndAfterSchemata(valueSchema, updatedBeforeSchema, updatedAfterSchema);
+            var updatedRecordValue = replaceBeforeAndAfterValues(recordValue, updatedRecordSchema, updatedBeforeValue, updatedAfterValue);
+
+            return newRecord(record, updatedRecordSchema, updatedRecordValue);
+        }
+
+        return record;
     }
 
-    private Schema updateSchema(Schema recordSchema) {
+    private Schema renameSchema(Schema recordSchema, String newName) {
         var updatedSchema = schemaUpdateCache.get(recordSchema);
 
         if (updatedSchema == null) {
-            updatedSchema = makeUpdatedInternalSchema(recordSchema);
+            updatedSchema = createRenamedSchema(recordSchema, newName);
             schemaUpdateCache.put(recordSchema, updatedSchema);
         }
 
         return updatedSchema;
     }
 
-    private Schema makeUpdatedInternalSchema(Schema sourceSchema) {
+    private Schema createRenamedSchema(Schema sourceSchema, String newName) {
         final var builder = SchemaBuilder.struct();
 
         builder.version(sourceSchema.version());
         builder.doc(sourceSchema.doc());
-        builder.name(newInternalName);
+        builder.name(newName);
         builder.optional();
 
         var params = sourceSchema.parameters();
@@ -169,12 +161,12 @@ public class SchemaRename<R extends ConnectRecord<R>> implements Transformation<
         return builder.build();
     }
 
-    private Struct replaceBeforeAndAfterValues(R record, Schema updatedSchema, Struct beforeValueReplacement, Struct afterValueReplacement) {
+    private Struct replaceBeforeAndAfterValues(Struct value, Schema updatedSchema, Struct beforeValueReplacement, Struct afterValueReplacement) {
         var updatedRecordValue = new Struct(updatedSchema);
 
-        for (var field : record.valueSchema().fields()) {
+        for (var field : value.schema().fields()) {
             if (!BEFORE_AND_AFTER_FIELDS.contains(field.name())) {
-                var originalValue = ((Struct) record.value()).get(field);
+                var originalValue = value.get(field);
                 updatedRecordValue.put(field.name(), originalValue);
             }
         }
@@ -183,5 +175,17 @@ public class SchemaRename<R extends ConnectRecord<R>> implements Transformation<
         updatedRecordValue.put(AFTER_FIELD_NAME, afterValueReplacement);
 
         return updatedRecordValue;
+    }
+
+    private R newRecord(R base, Schema valueSchema, Object value) {
+        return base.newRecord(
+                base.topic(),
+                base.kafkaPartition(),
+                base.keySchema(),
+                base.key(),
+                valueSchema,
+                value,
+                base.timestamp()
+        );
     }
 }
