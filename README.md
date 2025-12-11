@@ -1,11 +1,20 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### NormalizeFieldValue
+Change string value case of selected fields. This transofmr allow to change case of string values in nested fields (struct, arrays and arrays of structs).
+If schema of key or value is just a plain string then use `:UPPER` or `:LOWER` (empty field name).  
+```properties
+transforms=normalizeFieldValue
+transforms.normalizeFieldValue.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldValue
+transforms.normalizeFieldValue.key.fields=a:UPPER,b:LOWER,a.b.c:UPPER
+transforms.normalizeFieldValue.value.fields=a.b.c.d:UPPER
+```
 
 ## Debezium
 
 ### TimestampConverter
-```shell
+```properties
 converters=timestampConverter
 timestampConverter.type=com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter
 
@@ -31,3 +40,11 @@ timestampConverter.timetz.pattern={PATTERN -- when type=STRING} # default: HH:mm
 ```
 
 ### SchemaRename
+```properties
+transforms=schemaRename
+transforms.schemaRename.type=com.nryanov.kafka.connect.toolkit.debezium.transforms.SchemaRename
+transforms.schemaRename.internal.name={new_name} # if not set then transform will not change any records
+
+# optional
+transforms.schemaRename.cache.size={cache_size} # default: 32
+```
