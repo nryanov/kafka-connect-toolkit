@@ -4,12 +4,17 @@ import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transformation<R> {
     enum CaseType {
@@ -69,14 +74,74 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
 
     @Override
     public R apply(R record) {
-        return null;
+        var mappedKeySchema = applyMappingToSchema(record.keySchema());
+        var mappedValueSchema = applyMappingToSchema(record.valueSchema());
+
+        var mappedKey = copyValuesToNewSchema(record.keySchema(), mappedKeySchema, record.key());
+        var mappedValue = copyValuesToNewSchema(record.valueSchema(), mappedValueSchema, record.value());
+
+        return record.newRecord(
+                record.topic(),
+                record.kafkaPartition(),
+                mappedKeySchema,
+                mappedKey,
+                mappedValueSchema,
+                mappedValue,
+                record.timestamp()
+        );
     }
 
-    public Schema applyMappingToSchema(Schema source) {
-        var newSchema = SchemaUtil.copySchemaBasics(source);
+    private Schema applyMappingToSchema(Schema source) {
+        return switch (source.type()) {
+            case ARRAY -> {
+                var mappedSchema = applyMappingToSchema(source.valueSchema());
+                var arrayBuilder = SchemaBuilder.array(mappedSchema).name(source.name());
+                yield SchemaUtil.copySchemaBasics(source, arrayBuilder).build();
+            }
+            case STRUCT -> applyMappingsToStruct(source);
+            case null, default -> source;
+        };
+    }
 
+    private Schema applyMappingsToStruct(Schema struct) {
+        var copiedSchema = SchemaUtil.copySchemaBasics(struct);
 
+        for (var field : struct.fields()) {
+            // todo: map names
+            copiedSchema.field(field.name() + "_MAPPED", applyMappingToSchema(field.schema()));
+        }
 
-        return newSchema.build();
+        return copiedSchema.build();
+    }
+
+    private Object copyValuesToNewSchema(Schema source, Schema target, Object input) {
+        return switch (source.type()) {
+            case ARRAY -> copyArray(source.valueSchema(), target.valueSchema(), input);
+            case STRUCT -> copyStruct(source, target, input);
+            case null, default -> input;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> copyArray(Schema source, Schema target, Object input) {
+        var inputObjects = (List<Object>) input;
+
+        return inputObjects.stream().map(it -> copyValuesToNewSchema(source, target, it)).toList();
+    }
+
+    private Struct copyStruct(Schema source, Schema target, Object input) {
+        var currentStruct = requireStruct(input, "struct required");
+        var newStruct = new Struct(target);
+
+        for (var field : source.fields()) {
+            var currentValue = currentStruct.get(field);
+            var currentSchema = field.schema();
+            // todo: map name
+            var targetSchema = target.field(field.name() + "_MAPPED").schema();
+
+            newStruct.put(field.name() + "_MAPPED", copyValuesToNewSchema(currentSchema, targetSchema, currentValue));
+        }
+
+        return newStruct;
     }
 }
