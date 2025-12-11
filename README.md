@@ -31,3 +31,11 @@ timestampConverter.timetz.pattern={PATTERN -- when type=STRING} # default: HH:mm
 ```
 
 ### SchemaRename
+```shell
+transforms=schemaRename
+transforms.schemaRename.type=com.nryanov.kafka.connect.toolkit.debezium.transforms.SchemaRename
+transforms.schemaRename.internal.name={new_name} # if not set then transform will not change any records
+
+# optional
+transforms.schemaRename.cache.size={cache_size} # default: 32
+```
