@@ -1,6 +1,7 @@
 [versions]
 kafka = "3.9.1"
 debezium = "3.3.1.Final"
+googleGuava = "33.5.0-jre"
 
 # test dependencies
 slfj4 = "2.0.17"
@@ -17,6 +18,9 @@ logback = "1.5.18"
 [libraries]
 kafka-connect = { group = "org.apache.kafka", name = "connect-api", version.ref = "kafka" }
 kafka-transforms = { group = "org.apache.kafka", name = "connect-transforms", version.ref = "kafka" }
+
+google-guava = { group = "com.google.guava", name = "guava", version.ref = "googleGuava" }
+
 debezium-api = { group = "io.debezium", name = "debezium-api", version.ref = "debezium" }
 postgres-driver = { group = "org.postgresql", name = "postgresql", version.ref = "postgresDriver" }
 

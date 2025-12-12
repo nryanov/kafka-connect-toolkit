@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.google.common.base.CaseFormat;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -12,27 +13,10 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transformation<R> {
-    enum CaseType {
-        LOWER(String::toLowerCase),
-        UPPER(String::toUpperCase),
-        NONE(it -> it);
-
-        private final Function<String, String> mapper;
-
-        CaseType(Function<String, String> mapper) {
-            this.mapper = mapper;
-        }
-
-        public String apply(String value) {
-            return mapper.apply(value);
-        }
-    }
-
     private final static String INITIAL_CASE = "case.initial";
     private final static String TARGET_CASE = "case.target";
     private final static ConfigDef CONFIG_DEF =
@@ -52,8 +36,8 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
                             "Target case of field names"
                     );
 
-    private CaseType initialCase;
-    private CaseType targetCase;
+    private CaseFormat initialCase;
+    private CaseFormat targetCase;
 
     @Override
     public ConfigDef config() {
@@ -68,8 +52,8 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
     @Override
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
-        initialCase = CaseType.valueOf(Objects.requireNonNull(config.getString(INITIAL_CASE), "Empty case.initial config"));
-        targetCase = CaseType.valueOf(Objects.requireNonNull(config.getString(TARGET_CASE), "Empty case.target config"));
+        initialCase = CaseFormat.valueOf(Objects.requireNonNull(config.getString(INITIAL_CASE), "Empty case.initial config"));
+        targetCase = CaseFormat.valueOf(Objects.requireNonNull(config.getString(TARGET_CASE), "Empty case.target config"));
     }
 
     @Override
@@ -107,8 +91,8 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
         var copiedSchema = SchemaUtil.copySchemaBasics(struct);
 
         for (var field : struct.fields()) {
-            // todo: map names
-            copiedSchema.field(field.name() + "_MAPPED", applyMappingToSchema(field.schema()));
+            var name = initialCase.to(targetCase, field.name());
+            copiedSchema.field(name, applyMappingToSchema(field.schema()));
         }
 
         return copiedSchema.build();
@@ -136,10 +120,10 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
         for (var field : source.fields()) {
             var currentValue = currentStruct.get(field);
             var currentSchema = field.schema();
-            // todo: map name
-            var targetSchema = target.field(field.name() + "_MAPPED").schema();
+            var fieldName = initialCase.to(targetCase, field.name());
+            var targetSchema = target.field(fieldName).schema();
 
-            newStruct.put(field.name() + "_MAPPED", copyValuesToNewSchema(currentSchema, targetSchema, currentValue));
+            newStruct.put(fieldName, copyValuesToNewSchema(currentSchema, targetSchema, currentValue));
         }
 
         return newStruct;

@@ -1,4 +1,6 @@
 dependencies {
+    implementation(libs.google.guava)
+
     compileOnly(libs.kafka.connect)
     compileOnly(libs.kafka.transforms)
 
