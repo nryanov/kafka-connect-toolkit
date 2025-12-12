@@ -2,13 +2,24 @@
 
 ## Toolkit
 ### NormalizeFieldValue
-Change string value case of selected fields. This transofmr allow to change case of string values in nested fields (struct, arrays and arrays of structs).
-If schema of key or value is just a plain string then use `:UPPER` or `:LOWER` (empty field name).  
+Change string value format of selected fields. This transform allow to change case of string values in nested fields (struct, arrays and arrays of structs).
+If schema of key or value is just a plain string then use `:{FROM}:{TO}` (empty field name).
+
+General format of configs is: `{fieldName}:{from}:{to}`
 ```properties
 transforms=normalizeFieldValue
 transforms.normalizeFieldValue.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldValue
-transforms.normalizeFieldValue.key.fields=a:UPPER,b:LOWER,a.b.c:UPPER
-transforms.normalizeFieldValue.value.fields=a.b.c.d:UPPER
+transforms.normalizeFieldValue.key.fields=a:LOWER_HYPHEN:LOWER_UNDERSCORE,b:LOWER_CAMEL:UPPER_CAMEL,a.b.c:UPPER_UNDERSCORE:UPPER_CAMEL
+transforms.normalizeFieldValue.value.fields=a.b.c.d:UPPER_CAMEL:UPPER_UNDERSCORE
+```
+
+### NormalizeFieldName
+Re-format schema field names to specified format  
+```properties
+transforms=normalizeFieldName
+transforms.normalizeFieldName.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldName
+transforms.normalizeFieldName.case.from={LOWER_HYPHEN|LOWER_UNDERSCORE|LOWER_CAMEL|UPPER_CAMEL|UPPER_UNDERSCORE}
+transforms.normalizeFieldName.case.to={LOWER_HYPHEN|LOWER_UNDERSCORE|LOWER_CAMEL|UPPER_CAMEL|UPPER_UNDERSCORE}
 ```
 
 ## Debezium

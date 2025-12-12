@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.google.common.base.CaseFormat;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -12,22 +13,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 
 public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transformation<R> {
-    enum CaseType {
-        LOWER(String::toLowerCase),
-        UPPER(String::toUpperCase),
-        NONE(it -> it);
+    sealed interface Mapper {
+        String apply(String input);
 
-        private final Function<String, String> mapper;
+        Mapper NONE_MAPPER = new NoneMapper();
+    }
 
-        CaseType(Function<String, String> mapper) {
-            this.mapper = mapper;
+    private record NoneMapper() implements Mapper {
+        public String apply(String input) {
+            return input;
         }
+    }
 
-        public String apply(String value) {
-            return mapper.apply(value);
+    private record FromToMapper(CaseFormat from, CaseFormat to) implements Mapper {
+        public String apply(String input) {
+            return from.to(to, input);
         }
     }
 
@@ -50,8 +52,8 @@ public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transfor
                             "Comma separated list of fields in value part which should be transformed"
                     );
 
-    private final Map<String, CaseType> keyFieldToCaseTypeMappings = new HashMap<>();
-    private final Map<String, CaseType> valueFieldToCaseTypeMappings = new HashMap<>();
+    private final Map<String, Mapper> keyFieldToCaseTypeMappings = new HashMap<>();
+    private final Map<String, Mapper> valueFieldToCaseTypeMappings = new HashMap<>();
 
     @Override
     public ConfigDef config() {
@@ -71,16 +73,17 @@ public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transfor
         resolveMappings(valueFields, valueFieldToCaseTypeMappings);
     }
 
-    private void resolveMappings(String input, Map<String, CaseType> map) {
+    private void resolveMappings(String input, Map<String, Mapper> map) {
         Arrays.stream(input.split(","))
                 .forEach(it -> {
                     var pair = it.split(":");
 
-                    if (pair.length == 2) {
+                    if (pair.length == 3) {
                         var fieldName = pair[0];
-                        var mapping = pair[1];
+                        var from = CaseFormat.valueOf(pair[1]);
+                        var to = CaseFormat.valueOf(pair[2]);
 
-                        map.put(fieldName, CaseType.valueOf(mapping));
+                        map.put(fieldName, new FromToMapper(from, to));
                     }
                 });
     }
@@ -106,7 +109,7 @@ public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transfor
     }
 
     private Object applyMappings(
-            Map<String, CaseType> mappings,
+            Map<String, Mapper> mappings,
             Schema schema,
             Object input
     ) {
@@ -115,7 +118,7 @@ public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transfor
 
     @SuppressWarnings("unchecked")
     private Object applyMappings(
-            Map<String, CaseType> mappings,
+            Map<String, Mapper> mappings,
             String fieldName,
             Schema schema,
             Object input
@@ -129,7 +132,7 @@ public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transfor
     }
 
     private String applyMappingsToString(
-            Map<String, CaseType> mappings,
+            Map<String, Mapper> mappings,
             String fieldName,
             Schema schema,
             String input
@@ -138,11 +141,16 @@ public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transfor
             return null;
         }
 
-        return mappings.getOrDefault(fieldName, CaseType.NONE).apply(input);
+        var mapping = mappings.get(fieldName);
+        if (mapping == null) {
+            return input;
+        }
+
+        return mappings.getOrDefault(fieldName, Mapper.NONE_MAPPER).apply(input);
     }
 
     private Struct applyMappingsToStruct(
-            Map<String, CaseType> mappings,
+            Map<String, Mapper> mappings,
             String parentFieldName,
             Schema schema,
             Struct input
@@ -162,7 +170,7 @@ public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transfor
     }
 
     private List<Object> applyMappingsToArray(
-            Map<String, CaseType> mappings,
+            Map<String, Mapper> mappings,
             String parentFieldName,
             Schema schema,
             List<Object> input
