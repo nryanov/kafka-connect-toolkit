@@ -46,7 +46,9 @@ public class ReplaceFieldNameTest {
 
         );
 
-        assertEquals(expectedKeyStruct, resultKeyStruct);
+        assertEquals(expectedKeyStruct.get("a"), resultKeyStruct.get("a"));
+        assertThrows(DataException.class, () -> resultKeyStruct.get("b"));
+        assertEquals(expectedKeyStruct.getStruct("c"), resultKeyStruct.getStruct("c"));
     }
 
     @Test

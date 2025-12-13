@@ -83,10 +83,8 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
             return prefix + field.name();
         }
 
-        String replacedFieldName(String parent, Field field) {
-            var fullPath = fullPath(parent, field);
-            // return mapped name or itself if none
-            return replaceFields.getOrDefault(fullPath, fullPath);
+        String replacedFieldName(String fullPath, String defaultValue) {
+            return replaceFields.getOrDefault(fullPath, defaultValue);
         }
     }
 
@@ -204,7 +202,7 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
             }
 
             var fullPath = triplet.fullPath(parent, field);
-            var mappedName = triplet.replacedFieldName(parent, field);
+            var mappedName = triplet.replacedFieldName(fullPath, field.name());
 
             copiedSchema.field(mappedName, applyMappingToSchema(triplet, fullPath, field.schema()));
         }
@@ -241,7 +239,7 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
             }
 
             var fullPath = triplet.fullPath(parent, field);
-            var mappedName = triplet.replacedFieldName(parent, field);
+            var mappedName = triplet.replacedFieldName(fullPath, field.name());
 
             var currentValue = currentStruct.get(field);
             var currentSchema = field.schema();
