@@ -58,6 +58,10 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
 
     @Override
     public R apply(R record) {
+        if (record == null) {
+            return null;
+        }
+
         var mappedKeySchema = applyMappingToSchema(record.keySchema());
         var mappedValueSchema = applyMappingToSchema(record.valueSchema());
 
@@ -108,12 +112,20 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
 
     @SuppressWarnings("unchecked")
     private List<Object> copyArray(Schema source, Schema target, Object input) {
+        if (input == null) {
+            return null;
+        }
+
         var inputObjects = (List<Object>) input;
 
         return inputObjects.stream().map(it -> copyValuesToNewSchema(source, target, it)).toList();
     }
 
     private Struct copyStruct(Schema source, Schema target, Object input) {
+        if (input == null) {
+            return null;
+        }
+
         var currentStruct = requireStruct(input, "struct required");
         var newStruct = new Struct(target);
 
