@@ -186,6 +186,257 @@ public class ReplaceFieldNameTest {
         assertEquals(expectedValueStruct, resultValueStruct);
     }
 
+    @Test
+    public void excludeNestedField() {
+        var transform = new ReplaceFieldName<SinkRecord>();
+        transform.configure(Map.of(
+                "key.exclude", "b.inner_a",
+                "value.exclude", "b.inner_b"
+        ));
+
+        var nestedSchema = SchemaBuilder
+                .struct()
+                .field("inner_a", Schema.STRING_SCHEMA)
+                .field("inner_b", Schema.STRING_SCHEMA)
+                .field("inner_c", Schema.STRING_SCHEMA)
+                .build();
+        var schema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", nestedSchema)
+                .build();
+
+        var nestedKeyStruct = new Struct(nestedSchema)
+                .put("inner_a", "inner_a_value")
+                .put("inner_b", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var keyStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", nestedKeyStruct);
+
+        var nestedValueStruct = new Struct(nestedSchema)
+                .put("inner_a", "inner_a_value")
+                .put("inner_b", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var valueStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", nestedValueStruct);
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+
+        var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
+        var resultKeyStruct = requireStruct(result.key(), "test");
+
+        var expectedNestedKeySchema = SchemaBuilder
+                .struct()
+                .field("inner_b", Schema.STRING_SCHEMA)
+                .field("inner_c", Schema.STRING_SCHEMA)
+                .build();
+        var expectedKeySchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", expectedNestedKeySchema)
+                .build();
+
+        var expectedNestedValueSchema = SchemaBuilder
+                .struct()
+                .field("inner_a", Schema.STRING_SCHEMA)
+                .field("inner_c", Schema.STRING_SCHEMA)
+                .build();
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", expectedNestedValueSchema)
+                .build();
+
+        var expectedNestedKeyStruct = new Struct(expectedNestedKeySchema)
+                .put("inner_b", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var expectedKeyStruct = new Struct(expectedKeySchema)
+                .put("a", "a_field_value")
+                .put("b", expectedNestedKeyStruct);
+
+        var expectedNestedValueStruct = new Struct(expectedNestedValueSchema)
+                .put("inner_a", "inner_a_value")
+                .put("inner_c", "inner_c_value");
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("a", "a_field_value")
+                .put("b", expectedNestedValueStruct);
+
+        assertEquals(expectedKeySchema, resultKeyStruct.schema());
+        assertEquals(expectedKeyStruct, resultKeyStruct);
+
+        assertEquals(expectedValueSchema, resultValueStruct.schema());
+        assertEquals(expectedValueStruct, resultValueStruct);
+    }
+
+    @Test
+    public void includeNestedField() {
+        var transform = new ReplaceFieldName<SinkRecord>();
+        transform.configure(Map.of(
+                "key.include", "b.inner_b",
+                "value.include", "b.inner_c"
+        ));
+
+        var nestedSchema = SchemaBuilder
+                .struct()
+                .field("inner_a", Schema.STRING_SCHEMA)
+                .field("inner_b", Schema.STRING_SCHEMA)
+                .field("inner_c", Schema.STRING_SCHEMA)
+                .build();
+        var schema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", nestedSchema)
+                .build();
+
+        var nestedKeyStruct = new Struct(nestedSchema)
+                .put("inner_a", "inner_a_value")
+                .put("inner_b", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var keyStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", nestedKeyStruct);
+
+        var nestedValueStruct = new Struct(nestedSchema)
+                .put("inner_a", "inner_a_value")
+                .put("inner_b", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var valueStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", nestedValueStruct);
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+
+        var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
+        var resultKeyStruct = requireStruct(result.key(), "test");
+
+        var expectedNestedKeySchema = SchemaBuilder
+                .struct()
+                .field("inner_b", Schema.STRING_SCHEMA)
+                .build();
+        var expectedKeySchema = SchemaBuilder
+                .struct()
+                .field("b", expectedNestedKeySchema)
+                .build();
+
+        var expectedNestedValueSchema = SchemaBuilder
+                .struct()
+                .field("inner_c", Schema.STRING_SCHEMA)
+                .build();
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("b", expectedNestedValueSchema)
+                .build();
+
+        var expectedNestedKeyStruct = new Struct(expectedNestedKeySchema)
+                .put("inner_b", "inner_b_value");
+        var expectedKeyStruct = new Struct(expectedKeySchema)
+                .put("b", expectedNestedKeyStruct);
+
+        var expectedNestedValueStruct = new Struct(expectedNestedValueSchema)
+                .put("inner_c", "inner_c_value");
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("b", expectedNestedValueStruct);
+
+        assertEquals(expectedKeySchema, resultKeyStruct.schema());
+        assertEquals(expectedKeyStruct, resultKeyStruct);
+
+        assertEquals(expectedValueSchema, resultValueStruct.schema());
+        assertEquals(expectedValueStruct, resultValueStruct);
+    }
+
+    @Test
+    public void renameNestedField() {
+        var transform = new ReplaceFieldName<SinkRecord>();
+        transform.configure(Map.of(
+                "key.replace", "b.inner_a:inner_a_renamed",
+                "value.replace", "b.inner_b:inner_b_renamed"
+        ));
+
+        var nestedSchema = SchemaBuilder
+                .struct()
+                .field("inner_a", Schema.STRING_SCHEMA)
+                .field("inner_b", Schema.STRING_SCHEMA)
+                .field("inner_c", Schema.STRING_SCHEMA)
+                .build();
+        var schema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", nestedSchema)
+                .build();
+
+        var nestedKeyStruct = new Struct(nestedSchema)
+                .put("inner_a", "inner_a_value")
+                .put("inner_b", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var keyStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", nestedKeyStruct);
+
+        var nestedValueStruct = new Struct(nestedSchema)
+                .put("inner_a", "inner_a_value")
+                .put("inner_b", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var valueStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", nestedValueStruct);
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+
+        var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
+        var resultKeyStruct = requireStruct(result.key(), "test");
+
+        var expectedNestedKeySchema = SchemaBuilder
+                .struct()
+                .field("inner_a_renamed", Schema.STRING_SCHEMA)
+                .field("inner_b", Schema.STRING_SCHEMA)
+                .field("inner_c", Schema.STRING_SCHEMA)
+                .build();
+        var expectedKeySchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", expectedNestedKeySchema)
+                .build();
+
+        var expectedNestedValueSchema = SchemaBuilder
+                .struct()
+                .field("inner_a", Schema.STRING_SCHEMA)
+                .field("inner_b_renamed", Schema.STRING_SCHEMA)
+                .field("inner_c", Schema.STRING_SCHEMA)
+                .build();
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", expectedNestedValueSchema)
+                .build();
+
+        var expectedNestedKeyStruct = new Struct(expectedNestedKeySchema)
+                .put("inner_a_renamed", "inner_a_value")
+                .put("inner_b", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var expectedKeyStruct = new Struct(expectedKeySchema)
+                .put("a", "a_field_value")
+                .put("b", expectedNestedKeyStruct);
+
+        var expectedNestedValueStruct = new Struct(expectedNestedValueSchema)
+                .put("inner_a", "inner_a_value")
+                .put("inner_b_renamed", "inner_b_value")
+                .put("inner_c", "inner_c_value");
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("a", "a_field_value")
+                .put("b", expectedNestedValueStruct);
+
+        assertEquals(expectedKeySchema, resultKeyStruct.schema());
+        assertEquals(expectedKeyStruct, resultKeyStruct);
+
+        assertEquals(expectedValueSchema, resultValueStruct.schema());
+        assertEquals(expectedValueStruct, resultValueStruct);
+    }
+
 //    @Test
 //    public void excludeFieldFromKey() {
 //        var transform = new ReplaceFieldName<SinkRecord>();
