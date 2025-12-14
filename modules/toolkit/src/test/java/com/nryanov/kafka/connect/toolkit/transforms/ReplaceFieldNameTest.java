@@ -1,14 +1,11 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.DefaultRecords;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -16,27 +13,34 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 
 public class ReplaceFieldNameTest {
     @Test
-    public void excludeFieldFromKey() {
+    public void excludeField() {
         var transform = new ReplaceFieldName<SinkRecord>();
         transform.configure(Map.of(
-                "key.exclude", "b"
+                "key.exclude", "b",
+                "value.exclude", "c"
         ));
 
-        var keySchema = SchemaBuilder
+        var schema = SchemaBuilder
                 .struct()
                 .field("a", Schema.STRING_SCHEMA)
                 .field("b", Schema.INT32_SCHEMA)
                 .field("c", Schema.STRING_SCHEMA)
                 .build();
 
-        var keyStruct = new Struct(keySchema)
+        var keyStruct = new Struct(schema)
                 .put("a", "a_field_value")
                 .put("b", 1)
                 .put("c", "c_field_value");
 
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, null, null, 0L);
+        var valueStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
 
         var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
         var resultKeyStruct = requireStruct(result.key(), "test");
 
         var expectedKeySchema = SchemaBuilder
@@ -49,68 +53,106 @@ public class ReplaceFieldNameTest {
                 .put("a", "a_field_value")
                 .put("c", "c_field_value");
 
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .build();
+
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("a", "a_field_value")
+                .put("b", 1);
+
         assertEquals(expectedKeySchema, resultKeyStruct.schema());
         assertEquals(expectedKeyStruct, resultKeyStruct);
+
+        assertEquals(expectedValueSchema, resultValueStruct.schema());
+        assertEquals(expectedValueStruct, resultValueStruct);
     }
 
     @Test
-    public void includeFieldFromKey() {
+    public void includeField() {
         var transform = new ReplaceFieldName<SinkRecord>();
         transform.configure(Map.of(
-                "key.include", "c"
+                "key.include", "a",
+                "value.include", "b"
         ));
 
-        var keySchema = SchemaBuilder
+        var schema = SchemaBuilder
                 .struct()
                 .field("a", Schema.STRING_SCHEMA)
                 .field("b", Schema.INT32_SCHEMA)
                 .field("c", Schema.STRING_SCHEMA)
                 .build();
 
-        var keyStruct = new Struct(keySchema)
+        var keyStruct = new Struct(schema)
                 .put("a", "a_field_value")
                 .put("b", 1)
                 .put("c", "c_field_value");
 
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, null, null, 0L);
+        var valueStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
 
         var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
         var resultKeyStruct = requireStruct(result.key(), "test");
 
         var expectedKeySchema = SchemaBuilder
                 .struct()
-                .field("c", Schema.STRING_SCHEMA)
+                .field("a", Schema.STRING_SCHEMA)
                 .build();
 
         var expectedKeyStruct = new Struct(expectedKeySchema)
-                .put("c", "c_field_value");
+                .put("a", "a_field_value");
+
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("b", Schema.INT32_SCHEMA)
+                .build();
+
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("b", 1);
 
         assertEquals(expectedKeySchema, resultKeyStruct.schema());
         assertEquals(expectedKeyStruct, resultKeyStruct);
+
+        assertEquals(expectedValueSchema, resultValueStruct.schema());
+        assertEquals(expectedValueStruct, resultValueStruct);
     }
 
     @Test
-    public void renameFieldKey() {
+    public void renameField() {
         var transform = new ReplaceFieldName<SinkRecord>();
         transform.configure(Map.of(
-                "key.replace", "a:renamed_a"
+                "key.replace", "a:renamed_a",
+                "value.replace", "b:renamed_b"
         ));
 
-        var keySchema = SchemaBuilder
+        var schema = SchemaBuilder
                 .struct()
                 .field("a", Schema.STRING_SCHEMA)
                 .field("b", Schema.INT32_SCHEMA)
                 .field("c", Schema.STRING_SCHEMA)
                 .build();
 
-        var keyStruct = new Struct(keySchema)
+        var keyStruct = new Struct(schema)
                 .put("a", "a_field_value")
                 .put("b", 1)
                 .put("c", "c_field_value");
 
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, null, null, 0L);
+        var valueStruct = new Struct(schema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
 
         var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
         var resultKeyStruct = requireStruct(result.key(), "test");
 
         var expectedKeySchema = SchemaBuilder
@@ -125,119 +167,20 @@ public class ReplaceFieldNameTest {
                 .put("b", 1)
                 .put("c", "c_field_value");
 
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("renamed_b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("a", "a_field_value")
+                .put("renamed_b", 1)
+                .put("c", "c_field_value");
+
         assertEquals(expectedKeySchema, resultKeyStruct.schema());
         assertEquals(expectedKeyStruct, resultKeyStruct);
-    }
-
-    @Test
-    public void excludeFieldFromValue() {
-        var transform = new ReplaceFieldName<SinkRecord>();
-        transform.configure(Map.of(
-                "value.exclude", "b"
-        ));
-
-        var valueSchema = SchemaBuilder
-                .struct()
-                .field("a", Schema.STRING_SCHEMA)
-                .field("b", Schema.INT32_SCHEMA)
-                .field("c", Schema.STRING_SCHEMA)
-                .build();
-
-        var valueStruct = new Struct(valueSchema)
-                .put("a", "a_field_value")
-                .put("b", 1)
-                .put("c", "c_field_value");
-
-        var record = new SinkRecord("topic", 1, null, null, valueStruct.schema(), valueStruct, 0L);
-
-        var result = transform.apply(record);
-        var resultValueStruct = requireStruct(result.value(), "test");
-
-        var expectedValueSchema = SchemaBuilder
-                .struct()
-                .field("a", Schema.STRING_SCHEMA)
-                .field("c", Schema.STRING_SCHEMA)
-                .build();
-
-        var expectedValueStruct = new Struct(expectedValueSchema)
-                .put("a", "a_field_value")
-                .put("c", "c_field_value");
-
-        assertEquals(expectedValueSchema, resultValueStruct.schema());
-        assertEquals(expectedValueStruct, resultValueStruct);
-    }
-
-    @Test
-    public void includeFieldFromValue() {
-        var transform = new ReplaceFieldName<SinkRecord>();
-        transform.configure(Map.of(
-                "value.include", "c"
-        ));
-
-        var valueSchema = SchemaBuilder
-                .struct()
-                .field("a", Schema.STRING_SCHEMA)
-                .field("b", Schema.INT32_SCHEMA)
-                .field("c", Schema.STRING_SCHEMA)
-                .build();
-
-        var valueStruct = new Struct(valueSchema)
-                .put("a", "a_field_value")
-                .put("b", 1)
-                .put("c", "c_field_value");
-
-        var record = new SinkRecord("topic", 1, null, null, valueStruct.schema(), valueStruct, 0L);
-
-        var result = transform.apply(record);
-        var resultValueStruct = requireStruct(result.value(), "test");
-
-        var expectedValueSchema = SchemaBuilder
-                .struct()
-                .field("c", Schema.STRING_SCHEMA)
-                .build();
-
-        var expectedValueStruct = new Struct(expectedValueSchema)
-                .put("c", "c_field_value");
-
-        assertEquals(expectedValueSchema, resultValueStruct.schema());
-        assertEquals(expectedValueStruct, resultValueStruct);
-    }
-
-    @Test
-    public void renameFieldValue() {
-        var transform = new ReplaceFieldName<SinkRecord>();
-        transform.configure(Map.of(
-                "value.replace", "a:renamed_a"
-        ));
-
-        var valueSchema = SchemaBuilder
-                .struct()
-                .field("a", Schema.STRING_SCHEMA)
-                .field("b", Schema.INT32_SCHEMA)
-                .field("c", Schema.STRING_SCHEMA)
-                .build();
-
-        var valueStruct = new Struct(valueSchema)
-                .put("a", "a_field_value")
-                .put("b", 1)
-                .put("c", "c_field_value");
-
-        var record = new SinkRecord("topic", 1, null, null, valueStruct.schema(), valueStruct, 0L);
-
-        var result = transform.apply(record);
-        var resultValueStruct = requireStruct(result.value(), "test");
-
-        var expectedValueSchema = SchemaBuilder
-                .struct()
-                .field("renamed_a", Schema.STRING_SCHEMA)
-                .field("b", Schema.INT32_SCHEMA)
-                .field("c", Schema.STRING_SCHEMA)
-                .build();
-
-        var expectedValueStruct = new Struct(expectedValueSchema)
-                .put("renamed_a", "a_field_value")
-                .put("b", 1)
-                .put("c", "c_field_value");
 
         assertEquals(expectedValueSchema, resultValueStruct.schema());
         assertEquals(expectedValueStruct, resultValueStruct);
