@@ -10,15 +10,15 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
+import static com.nryanov.kafka.connect.toolkit.common.ConfigParser.parseCommaSeparatedPairs;
+import static com.nryanov.kafka.connect.toolkit.common.ConfigParser.parseCommaSeparatedSingleValues;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformation<R> {
@@ -184,31 +184,6 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
         valueTriplet = new Triplet(valueExcludeFields, valueReplaceFields, valueIncludePrefixTrie);
     }
 
-    private static void parseCommaSeparatedSingleValues(AbstractConfig config, String name, Set<String> target) {
-        Arrays
-                .asList(Objects.requireNonNullElse(config.getString(name), "").split(","))
-                .forEach(it -> {
-                    if (!it.isBlank()) {
-                        target.add(it);
-                    }
-                });
-    }
-
-    private static void parseCommaSeparatedPairs(AbstractConfig config, String name, Map<String, String> target) {
-        Arrays.stream(Objects.requireNonNullElse(config.getString(name), "")
-                        .split(","))
-                .forEach(it -> {
-                    var pair = it.split(":");
-
-                    if (pair.length == 2) {
-                        var from = pair[0];
-                        var to = pair[1];
-
-                        target.put(from, to);
-                    }
-                });
-    }
-
     @Override
     public R apply(R record) {
         if (record == null) {
@@ -269,6 +244,10 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
     }
 
     private Object copyValuesToNewSchema(Triplet triplet, String parent, Schema source, Schema target, Object input) {
+        if (source == null) {
+            return null;
+        }
+
         return switch (source.type()) {
             case ARRAY -> copyArray(triplet, parent, source.valueSchema(), target.valueSchema(), input);
             case STRUCT -> copyStruct(triplet, parent, source, target, input);
