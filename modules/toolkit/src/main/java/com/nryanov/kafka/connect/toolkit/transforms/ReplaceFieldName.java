@@ -11,6 +11,7 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -69,13 +70,63 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
                             "Fields to include. If specified, only the named fields will be included in the resulting Struct or Map."
                     );
 
-    private record Triplet(Set<String> excludeFields, Map<String, String> replaceFields, Set<String> includeFields) {
-        boolean shouldExclude(Field field) {
-            return excludeFields.contains(field.name());
+    private static class PrefixTrie {
+        final Map<String, PrefixTrie> trie = new HashMap<>();
+
+        public PrefixTrie() {}
+
+        void build(Collection<String> includeFields) {
+            includeFields.forEach(it -> {
+                var splits = it.split("[.]");
+
+                var current = this;
+                for (var split : splits) {
+                    var next = current.trie.get(split);
+                    if (next == null) {
+                        next = new PrefixTrie();
+                        current.trie.put(split, next);
+                    }
+
+                    current = next;
+                }
+            });
         }
 
-        boolean shouldNotInclude(Field field) {
-            return !includeFields.isEmpty() && !includeFields.contains(field.name());
+        boolean isEmpty() {
+            return trie.isEmpty();
+        }
+
+        boolean shouldInclude(String value) {
+            var splits = value.split("[.]");
+
+            var current = this;
+            var i = 0;
+
+            for (; i < splits.length && current.trie.containsKey(splits[i]); i++) {
+                current = current.trie.get(splits[i]);
+            }
+
+            // specific field should be included
+            if (i == splits.length) {
+                return true;
+            }
+
+            // all child fields should be included or this filed and it's child should be excluded
+            return current.trie.isEmpty();
+        }
+    }
+
+    private record Triplet(
+            Set<String> excludeFields,
+            Map<String, String> replaceFields,
+            PrefixTrie includeFieldsTrie
+    ) {
+        boolean shouldExclude(String fullPath) {
+            return excludeFields.contains(fullPath);
+        }
+
+        boolean shouldNotInclude(String fullPath) {
+            return !includeFieldsTrie.isEmpty() && !includeFieldsTrie.shouldInclude(fullPath);
         }
 
         String fullPath(String parent, Field field) {
@@ -123,8 +174,14 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
         parseCommaSeparatedSingleValues(config, KEY_INCLUDE, keyIncludeFields);
         parseCommaSeparatedSingleValues(config, VALUE_INCLUDE, valueIncludeFields);
 
-        keyTriplet = new Triplet(keyExcludeFields, keyReplaceFields, keyIncludeFields);
-        valueTriplet = new Triplet(valueExcludeFields, valueReplaceFields, valueIncludeFields);
+        var keyIncludePrefixTrie = new PrefixTrie();
+        keyIncludePrefixTrie.build(keyIncludeFields);
+
+        var valueIncludePrefixTrie = new PrefixTrie();
+        valueIncludePrefixTrie.build(valueIncludeFields);
+
+        keyTriplet = new Triplet(keyExcludeFields, keyReplaceFields, keyIncludePrefixTrie);
+        valueTriplet = new Triplet(valueExcludeFields, valueReplaceFields, valueIncludePrefixTrie);
     }
 
     private static void parseCommaSeparatedSingleValues(AbstractConfig config, String name, Set<String> target) {
@@ -193,15 +250,16 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
         var copiedSchema = SchemaUtil.copySchemaBasics(struct);
 
         for (var field : struct.fields()) {
-            if (triplet.shouldExclude(field)) {
-                continue;
-            }
-
-            if (triplet.shouldNotInclude(field)) {
-                continue;
-            }
-
             var fullPath = triplet.fullPath(parent, field);
+
+            if (triplet.shouldExclude(fullPath)) {
+                continue;
+            }
+
+            if (triplet.shouldNotInclude(fullPath)) {
+                continue;
+            }
+
             var mappedName = triplet.replacedFieldName(fullPath, field.name());
 
             copiedSchema.field(mappedName, applyMappingToSchema(triplet, fullPath, field.schema()));
@@ -230,15 +288,16 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
         var newStruct = new Struct(target);
 
         for (var field : source.fields()) {
-            if (triplet.shouldExclude(field)) {
-                continue;
-            }
-
-            if (triplet.shouldNotInclude(field)) {
-                continue;
-            }
-
             var fullPath = triplet.fullPath(parent, field);
+
+            if (triplet.shouldExclude(fullPath)) {
+                continue;
+            }
+
+            if (triplet.shouldNotInclude(fullPath)) {
+                continue;
+            }
+
             var mappedName = triplet.replacedFieldName(fullPath, field.name());
 
             var currentValue = currentStruct.get(field);

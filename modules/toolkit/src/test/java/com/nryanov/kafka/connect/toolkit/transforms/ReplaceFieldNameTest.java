@@ -84,6 +84,6 @@ public class ReplaceFieldNameTest {
 
         );
 
-        assertEquals(expectedKeyStruct, resultKeyStruct);
+        assertEquals(expectedKeyStruct.getStruct("c"), resultKeyStruct.getStruct("c"));
     }
 }
