@@ -19,6 +19,9 @@ transforms.replaceFieldName.value.replace=c:renamed_c,d.inner1.inner2:renamed_in
 
 As this transform's logic is similar to [confluent ReplaceField](https://docs.confluent.io/kafka-connectors/transforms/current/replacefield-confluent.html), you can find more examples in it's doc [confluent ReplaceField](https://docs.confluent.io/kafka-connectors/transforms/current/replacefield-confluent.html)
 
+### ReplaceFieldValue
+TODO
+
 ### NormalizeFieldValue
 Change string value format of selected fields. This transform allow to change case of string values in nested fields (struct, arrays and arrays of structs).
 If schema of key or value is just a plain string then use `:{FROM}:{TO}` (empty field name).
