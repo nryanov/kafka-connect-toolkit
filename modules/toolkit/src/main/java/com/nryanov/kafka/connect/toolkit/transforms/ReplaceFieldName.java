@@ -217,11 +217,11 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
 
         var initialParentPath = "";
 
-        var mappedKeySchema = applyMappingToSchema(keyTriplet, initialParentPath, record.keySchema());
-        var mappedValueSchema = applyMappingToSchema(valueTriplet, initialParentPath, record.valueSchema());
+        var mappedKeySchema = record.keySchema() == null ? null : applyMappingToSchema(keyTriplet, initialParentPath, record.keySchema());
+        var mappedKey = record.key() == null ? null : copyValuesToNewSchema(keyTriplet, initialParentPath, record.keySchema(), mappedKeySchema, record.key());
 
-        var mappedKey = copyValuesToNewSchema(keyTriplet, initialParentPath, record.keySchema(), mappedKeySchema, record.key());
-        var mappedValue = copyValuesToNewSchema(valueTriplet, initialParentPath, record.valueSchema(), mappedValueSchema, record.value());
+        var mappedValueSchema = record.valueSchema() == null ? null : applyMappingToSchema(valueTriplet, initialParentPath, record.valueSchema());
+        var mappedValue = record.value() == null ? null : copyValuesToNewSchema(valueTriplet, initialParentPath, record.valueSchema(), mappedValueSchema, record.value());
 
         return record.newRecord(
                 record.topic(),

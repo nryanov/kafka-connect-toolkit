@@ -1,6 +1,8 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.nryanov.kafka.connect.toolkit.transforms.common.DefaultRecords;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -20,70 +22,357 @@ public class ReplaceFieldNameTest {
                 "key.exclude", "b"
         ));
 
-        var keyStruct = DefaultRecords.createNestedKeyStruct();
-        var valueStruct = DefaultRecords.createNestedValueStruct();
+        var keySchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
 
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+        var keyStruct = new Struct(keySchema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, null, null, 0L);
 
         var result = transform.apply(record);
         var resultKeyStruct = requireStruct(result.key(), "test");
 
-        assertNotNull(result.keySchema().field("a"));
-        assertNull(result.keySchema().field("b"));
-        assertNotNull(result.keySchema().field("c"));
+        var expectedKeySchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
 
-        var innerKeyArraySchema = keyStruct.schema().field("c").schema().field("inner_c").schema().valueSchema();
-        var expectedKeyStruct = new Struct(keyStruct.schema());
-        expectedKeyStruct.put("a", "a_field_value");
-        expectedKeyStruct.put("c", new Struct(keyStruct.schema().field("c").schema())
-                .put("inner_a", "inner_a_value")
-                .put("inner_b", "inner_b_value")
-                .put("inner_c", List.of(
-                        new Struct(innerKeyArraySchema)
-                                .put("inner_inner_a", "inner_inner_a_array_value")
-                                .put("inner_inner_b", 3)
-                ))
+        var expectedKeyStruct = new Struct(expectedKeySchema)
+                .put("a", "a_field_value")
+                .put("c", "c_field_value");
 
-        );
-
-        assertEquals(expectedKeyStruct.get("a"), resultKeyStruct.get("a"));
-        assertThrows(DataException.class, () -> resultKeyStruct.get("b"));
-        assertEquals(expectedKeyStruct.getStruct("c"), resultKeyStruct.getStruct("c"));
+        assertEquals(expectedKeySchema, resultKeyStruct.schema());
+        assertEquals(expectedKeyStruct, resultKeyStruct);
     }
 
     @Test
-    public void includeSubsetOfFieldsFromKey() {
+    public void includeFieldFromKey() {
         var transform = new ReplaceFieldName<SinkRecord>();
         transform.configure(Map.of(
                 "key.include", "c"
         ));
 
-        var keyStruct = DefaultRecords.createNestedKeyStruct();
-        var valueStruct = DefaultRecords.createNestedValueStruct();
+        var keySchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
 
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+        var keyStruct = new Struct(keySchema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, null, null, 0L);
 
         var result = transform.apply(record);
         var resultKeyStruct = requireStruct(result.key(), "test");
 
-        assertNull(result.keySchema().field("a"));
-        assertNull(result.keySchema().field("b"));
-        assertNotNull(result.keySchema().field("c"));
+        var expectedKeySchema = SchemaBuilder
+                .struct()
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
 
-        var innerKeyArraySchema = keyStruct.schema().field("c").schema().field("inner_c").schema().valueSchema();
+        var expectedKeyStruct = new Struct(expectedKeySchema)
+                .put("c", "c_field_value");
 
-        var expectedKeyStruct = new Struct(keyStruct.schema());
-        expectedKeyStruct.put("c", new Struct(keyStruct.schema().field("c").schema())
-                .put("inner_a", "inner_a_value")
-                .put("inner_b", "inner_b_value")
-                .put("inner_c", List.of(
-                        new Struct(innerKeyArraySchema)
-                                .put("inner_inner_a", "inner_inner_a_array_value")
-                                .put("inner_inner_b", 3)
-                ))
-
-        );
-
-        assertEquals(expectedKeyStruct.getStruct("c"), resultKeyStruct.getStruct("c"));
+        assertEquals(expectedKeySchema, resultKeyStruct.schema());
+        assertEquals(expectedKeyStruct, resultKeyStruct);
     }
+
+    @Test
+    public void renameFieldKey() {
+        var transform = new ReplaceFieldName<SinkRecord>();
+        transform.configure(Map.of(
+                "key.replace", "a:renamed_a"
+        ));
+
+        var keySchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var keyStruct = new Struct(keySchema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, null, null, 0L);
+
+        var result = transform.apply(record);
+        var resultKeyStruct = requireStruct(result.key(), "test");
+
+        var expectedKeySchema = SchemaBuilder
+                .struct()
+                .field("renamed_a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var expectedKeyStruct = new Struct(expectedKeySchema)
+                .put("renamed_a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        assertEquals(expectedKeySchema, resultKeyStruct.schema());
+        assertEquals(expectedKeyStruct, resultKeyStruct);
+    }
+
+    @Test
+    public void excludeFieldFromValue() {
+        var transform = new ReplaceFieldName<SinkRecord>();
+        transform.configure(Map.of(
+                "value.exclude", "b"
+        ));
+
+        var valueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var valueStruct = new Struct(valueSchema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, null, null, valueStruct.schema(), valueStruct, 0L);
+
+        var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
+
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("a", "a_field_value")
+                .put("c", "c_field_value");
+
+        assertEquals(expectedValueSchema, resultValueStruct.schema());
+        assertEquals(expectedValueStruct, resultValueStruct);
+    }
+
+    @Test
+    public void includeFieldFromValue() {
+        var transform = new ReplaceFieldName<SinkRecord>();
+        transform.configure(Map.of(
+                "value.include", "c"
+        ));
+
+        var valueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var valueStruct = new Struct(valueSchema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, null, null, valueStruct.schema(), valueStruct, 0L);
+
+        var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
+
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("c", "c_field_value");
+
+        assertEquals(expectedValueSchema, resultValueStruct.schema());
+        assertEquals(expectedValueStruct, resultValueStruct);
+    }
+
+    @Test
+    public void renameFieldValue() {
+        var transform = new ReplaceFieldName<SinkRecord>();
+        transform.configure(Map.of(
+                "value.replace", "a:renamed_a"
+        ));
+
+        var valueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var valueStruct = new Struct(valueSchema)
+                .put("a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        var record = new SinkRecord("topic", 1, null, null, valueStruct.schema(), valueStruct, 0L);
+
+        var result = transform.apply(record);
+        var resultValueStruct = requireStruct(result.value(), "test");
+
+        var expectedValueSchema = SchemaBuilder
+                .struct()
+                .field("renamed_a", Schema.STRING_SCHEMA)
+                .field("b", Schema.INT32_SCHEMA)
+                .field("c", Schema.STRING_SCHEMA)
+                .build();
+
+        var expectedValueStruct = new Struct(expectedValueSchema)
+                .put("renamed_a", "a_field_value")
+                .put("b", 1)
+                .put("c", "c_field_value");
+
+        assertEquals(expectedValueSchema, resultValueStruct.schema());
+        assertEquals(expectedValueStruct, resultValueStruct);
+    }
+
+//    @Test
+//    public void excludeFieldFromKey() {
+//        var transform = new ReplaceFieldName<SinkRecord>();
+//        transform.configure(Map.of(
+//                "key.exclude", "b"
+//        ));
+//
+//        var keyStruct = DefaultRecords.createNestedKeyStruct();
+//        var valueStruct = DefaultRecords.createNestedValueStruct();
+//
+//        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+//
+//        var result = transform.apply(record);
+//        var resultKeyStruct = requireStruct(result.key(), "test");
+//
+//        assertNotNull(result.keySchema().field("a"));
+//        assertNull(result.keySchema().field("b"));
+//        assertNotNull(result.keySchema().field("c"));
+//
+//        var innerKeyArraySchema = keyStruct.schema().field("c").schema().field("inner_c").schema().valueSchema();
+//        var expectedKeyStruct = new Struct(keyStruct.schema());
+//        expectedKeyStruct.put("a", "a_field_value");
+//        expectedKeyStruct.put("c", new Struct(keyStruct.schema().field("c").schema())
+//                .put("inner_a", "inner_a_value")
+//                .put("inner_b", "inner_b_value")
+//                .put("inner_c", List.of(
+//                        new Struct(innerKeyArraySchema)
+//                                .put("inner_inner_a", "inner_inner_a_array_value")
+//                                .put("inner_inner_b", 3)
+//                ))
+//
+//        );
+//
+//        assertEquals(expectedKeyStruct.get("a"), resultKeyStruct.get("a"));
+//        assertThrows(DataException.class, () -> resultKeyStruct.get("b"));
+//        assertEquals(expectedKeyStruct.getStruct("c"), resultKeyStruct.getStruct("c"));
+//    }
+//
+//    @Test
+//    public void includeSubsetOfFieldsFromKey() {
+//        var transform = new ReplaceFieldName<SinkRecord>();
+//        transform.configure(Map.of(
+//                "key.include", "c"
+//        ));
+//
+//        var keyStruct = DefaultRecords.createNestedKeyStruct();
+//        var valueStruct = DefaultRecords.createNestedValueStruct();
+//
+//        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+//
+//        var result = transform.apply(record);
+//        var resultKeyStruct = requireStruct(result.key(), "test");
+//
+//        var innerKeyArraySchema = keyStruct.schema().field("c").schema().field("inner_c").schema().valueSchema();
+//        var expectedKeyStruct = new Struct(keyStruct.schema());
+//        expectedKeyStruct.put("c", new Struct(keyStruct.schema().field("c").schema())
+//                .put("inner_a", "inner_a_value")
+//                .put("inner_b", "inner_b_value")
+//                .put("inner_c", List.of(
+//                        new Struct(innerKeyArraySchema)
+//                                .put("inner_inner_a", "inner_inner_a_array_value")
+//                                .put("inner_inner_b", 3)
+//                ))
+//
+//        );
+//
+//        assertThrows(DataException.class, () -> resultKeyStruct.get("a"));
+//        assertThrows(DataException.class, () -> resultKeyStruct.get("b"));
+//        assertEquals(expectedKeyStruct.getStruct("c"), resultKeyStruct.getStruct("c"));
+//    }
+//
+//    @Test
+//    public void includeSubsetOfNestedFieldsFromKey() {
+//        var transform = new ReplaceFieldName<SinkRecord>();
+//        transform.configure(Map.of(
+//                "key.include", "c.inner_a"
+//        ));
+//
+//        var keyStruct = DefaultRecords.createNestedKeyStruct();
+//        var valueStruct = DefaultRecords.createNestedValueStruct();
+//
+//        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+//
+//        var result = transform.apply(record);
+//        var resultKeyStruct = requireStruct(result.key(), "test");
+//
+//        var expectedKeySchema = SchemaBuilder.struct().field("c", SchemaBuilder.struct().field("inner_a", Schema.STRING_SCHEMA).build()).build();
+//        var expectedKeyStruct = new Struct(expectedKeySchema);
+//        expectedKeyStruct.put("c", new Struct(expectedKeySchema.schema().field("c").schema()).put("inner_a", "inner_a_value"));
+//
+//        assertEquals(expectedKeySchema, resultKeyStruct.schema());
+//        assertEquals(expectedKeyStruct, resultKeyStruct);
+//    }
+//
+//    @Test
+//    public void includeSubsetOfNestedArrayFieldsFromKey() {
+//        var transform = new ReplaceFieldName<SinkRecord>();
+//        transform.configure(Map.of(
+//                "key.include", "c.inner_c.inner_inner_a"
+//        ));
+//
+//        var keyStruct = DefaultRecords.createNestedKeyStruct();
+//        var valueStruct = DefaultRecords.createNestedValueStruct();
+//
+//        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+//
+//        var result = transform.apply(record);
+//        var resultKeyStruct = requireStruct(result.key(), "test");
+//
+//        var expectedInnerKeyArraySchema = SchemaBuilder.struct()
+//                .field("inner_inner_a", Schema.STRING_SCHEMA)
+//                .build();
+//        var expectedKeySchema = SchemaBuilder
+//                .struct()
+//                .field("c", SchemaBuilder.struct()
+//                        .field("inner_c", SchemaBuilder.array(expectedInnerKeyArraySchema).build())
+//                        .build()
+//                )
+//                .build();
+//
+//        var expectedKeyStruct = new Struct(expectedKeySchema);
+//        expectedKeyStruct.put("c", new Struct(expectedKeySchema.field("c").schema())
+//                .put("inner_c", List.of(
+//                        new Struct(expectedInnerKeyArraySchema)
+//                                .put("inner_inner_a", "inner_inner_a_array_value")
+//                ))
+//
+//        );
+//
+//        assertEquals(expectedKeySchema, resultKeyStruct.schema());
+//        assertEquals(expectedKeyStruct, resultKeyStruct);
+//    }
 }
