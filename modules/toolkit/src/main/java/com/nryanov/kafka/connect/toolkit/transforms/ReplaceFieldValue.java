@@ -92,7 +92,24 @@ public class ReplaceFieldValue<R extends ConnectRecord<R>> implements Transforma
 
     @Override
     public R apply(R record) {
-        return null;
+        if (record == null) {
+            return null;
+        }
+
+        var initialParentPath = "";
+
+        var mappedKey = record.key() == null ? null : applyReplacements(Target.KEY, initialParentPath, record.keySchema(), record.key());
+        var mappedValue = record.value() == null ? null : applyReplacements(Target.VALUE, initialParentPath, record.valueSchema(), record.value());
+
+        return record.newRecord(
+                record.topic(),
+                record.kafkaPartition(),
+                record.keySchema(),
+                mappedKey,
+                record.valueSchema(),
+                mappedValue,
+                record.timestamp()
+        );
     }
 
     private Object applyReplacements(Target target, String parent, Schema schema, Object input) {
