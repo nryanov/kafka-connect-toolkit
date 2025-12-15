@@ -1,6 +1,36 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### ReplaceFieldName
+This transform allow to rename, exclude/include specified fields includes the nested ones. Also you don't need to set up different transforms for key or value because
+this transform allows you to set up needed changes in a single config.
+```properties
+transforms=replaceFieldName
+transforms.replaceFieldName.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldName
+# key
+transforms.replaceFieldName.key.exclude=a,b.inner1.inner2
+transforms.replaceFieldName.key.include=c,d.inner1
+transforms.replaceFieldName.key.replace=c:renamed_c,d.inner1.inner2:renamed_inner_field
+# value
+transforms.replaceFieldName.value.exclude=a,b.inner1.inner2
+transforms.replaceFieldName.value.include=c,d.inner1
+transforms.replaceFieldName.value.replace=c:renamed_c,d.inner1.inner2:renamed_inner_field
+```
+
+As this transform's logic is similar to [confluent ReplaceField](https://docs.confluent.io/kafka-connectors/transforms/current/replacefield-confluent.html), you can find more examples in it's doc [confluent ReplaceField](https://docs.confluent.io/kafka-connectors/transforms/current/replacefield-confluent.html)
+
+### ReplaceFieldValue
+This transform allow to replace field values (including the nested ones).
+Format of settings: `{field_name}:{replacement}`. If replacement couldn't be applied, then default value of type will be used.
+```properties
+transforms=replaceFieldValue
+transforms.replaceFieldValue.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldValue
+# key
+transforms.replaceFieldValue.key.fields=a:replacement
+# value
+transforms.replaceFieldName.value.fields=a.b.c:replacement
+```
+
 ### NormalizeFieldValue
 Change string value format of selected fields. This transform allow to change case of string values in nested fields (struct, arrays and arrays of structs).
 If schema of key or value is just a plain string then use `:{FROM}:{TO}` (empty field name).
