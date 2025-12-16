@@ -6,7 +6,7 @@ import org.apache.kafka.connect.transforms.Transformation;
 
 import java.util.Map;
 
-public class CardMaskFieldValue<R extends ConnectRecord<R>> implements Transformation<R> {
+public class CardCardMaskFieldValue<R extends ConnectRecord<R>> implements Transformation<R> {
     @Override
     public ConfigDef config() {
         return null;
