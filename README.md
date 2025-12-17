@@ -1,6 +1,25 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### CardMaskFieldValue
+`CardMaskFieldValue` transform allow to mask card number(s) in a text value. Under the hood a Luhn algorithm is used to determine a valid card numbers for masking.
+To setup this transform in a minimum configuration you should set field(s) of key and/or value parts which may contain card numbers which should be masked.
+Nested fields are also supported.
+
+```properties
+transforms=cardMaskFieldValue
+transforms.cardMaskFieldValue.type=com.nryanov.kafka.connect.toolkit.CardMaskFieldValue
+
+transforms.cardMaskFieldValue.key.fields={comma-separated list of fields in key-part}
+transforms.cardMaskFieldValue.value.fields={comma-separated list of fields in value-part}
+transforms.cardMaskFieldValue.masking.expose-first-count={number of digits in the beginning which should be exposed in masked card number} # default: 4
+transforms.cardMaskFieldValue.masking.expose-last-count={number of digits in the end which should be exposed in masked card number} # default: 4
+transforms.cardMaskFieldValue.masking.character={character which should be used to mask digits} # default: *
+transforms.cardMaskFieldValue.masking.separators={characters which should be considered as valid separators of blocks in card-number} # default: - (+ space)
+transforms.cardMaskFieldValue.masking.card-number-lower-bound={minimum allowed length of card number} # default: 15
+transforms.cardMaskFieldValue.masking.card-number-upper-bound={maximum allowed length of card number # default: 16
+```
+
 ### ReplaceFieldName
 This transform allow to rename, exclude/include specified fields includes the nested ones. Also you don't need to set up different transforms for key or value because
 this transform allows you to set up needed changes in a single config.
