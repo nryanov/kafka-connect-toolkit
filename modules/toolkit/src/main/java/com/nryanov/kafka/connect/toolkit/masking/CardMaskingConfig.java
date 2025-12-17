@@ -9,37 +9,20 @@ import java.util.regex.Pattern;
 public class CardMaskingConfig {
 
     private final char maskingCharacter;
-    private final char[] invalidSeparators;
+    private final List<Character> invalidSeparators;
     private final int exposeFirst;
     private final int exposeLast;
 
     private final String invalidSeparatorRegex;
     private final List<Pattern> cardNumberPatterns;
 
-    public CardMaskingConfig() {
-        this.maskingCharacter = 'X';
-        this.invalidSeparators = new char[]{' ', '-'};
-        this.exposeFirst = 6;
-        this.exposeLast = 4;
-
-        this.invalidSeparatorRegex = generateInvalidSeparatorRegex(invalidSeparators);
-        this.cardNumberPatterns = new ArrayList<>();
-
-        var cardNumberUpperBound = 16;
-        var cardNumberLowerBound = 15;
-
-        for (var cardLength = cardNumberUpperBound; cardLength >= cardNumberLowerBound; cardLength--) {
-            cardNumberPatterns.add(generateCardNumberPattern(invalidSeparatorRegex, cardLength));
-        }
-    }
-
     public CardMaskingConfig(
             char maskingCharacter,
-            char[] invalidSeparators,
+            List<Character> invalidSeparators,
             int exposeFirst,
             int exposeLast,
-            int cardNumberUpperBound,
-            int cardNumberLowerBound
+            int cardNumberLowerBound,
+            int cardNumberUpperBound
     ) {
         if (cardNumberUpperBound < cardNumberLowerBound) {
             var message = String.format("Card number lower bound (%d) is greater than upper bound (%d)", cardNumberLowerBound, cardNumberUpperBound);
@@ -63,7 +46,7 @@ public class CardMaskingConfig {
         return maskingCharacter;
     }
 
-    public char[] invalidSeparators() {
+    public List<Character> invalidSeparators() {
         return invalidSeparators;
     }
 
@@ -88,13 +71,8 @@ public class CardMaskingConfig {
         return Pattern.compile(regex);
     }
 
-    private static String generateInvalidSeparatorRegex(char[] invalidSeparators) {
-        var invalidSeparatorsSet = new HashSet<Character>();
-
-        for (var separator : invalidSeparators) {
-            invalidSeparatorsSet.add(separator);
-        }
-
+    private static String generateInvalidSeparatorRegex(List<Character> invalidSeparators) {
+        var invalidSeparatorsSet = new HashSet<>(invalidSeparators);
         return buildSeparatorRegexString(invalidSeparatorsSet);
     }
 

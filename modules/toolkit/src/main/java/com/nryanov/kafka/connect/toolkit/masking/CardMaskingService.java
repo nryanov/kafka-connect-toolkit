@@ -1,7 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.masking;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -16,14 +15,6 @@ public class CardMaskingService {
     private final String invalidSeparatorRegex;
     private final List<Pattern> cardNumberPatterns;
     private final LuhnValidator validator;
-
-    public CardMaskingService() {
-        CardMaskingConfig defaultConfig = new CardMaskingConfig();
-        this.cardMaskingConfig = defaultConfig;
-        this.invalidSeparatorRegex = defaultConfig.getInvalidSeparatorRegex();
-        this.validator = new LuhnValidator();
-        this.cardNumberPatterns = defaultConfig.getCardNumberPatterns();
-    }
 
     public CardMaskingService(CardMaskingConfig cardMaskingConfig) {
         this.cardMaskingConfig = cardMaskingConfig;
@@ -64,7 +55,7 @@ public class CardMaskingService {
         try {
             return findCardNumbers(input);
         } catch (PatternSyntaxException e) {
-            var message = String.format("Invalid separators provided: %s", Arrays.toString(cardMaskingConfig.invalidSeparators()));
+            var message = String.format("Invalid separators provided: %s", cardMaskingConfig.invalidSeparators());
             throw new IllegalArgumentException(message);
         }
     }
