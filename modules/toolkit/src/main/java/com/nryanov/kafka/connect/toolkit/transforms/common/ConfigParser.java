@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.common;
+package com.nryanov.kafka.connect.toolkit.transforms.common;
 
 import org.apache.kafka.common.config.AbstractConfig;
 

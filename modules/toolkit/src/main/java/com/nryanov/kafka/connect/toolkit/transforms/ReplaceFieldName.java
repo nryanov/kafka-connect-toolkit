@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.nryanov.kafka.connect.toolkit.common.ConfigParser.parseCommaSeparatedPairs;
-import static com.nryanov.kafka.connect.toolkit.common.ConfigParser.parseCommaSeparatedSingleValues;
+import static com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser.parseCommaSeparatedPairs;
+import static com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser.parseCommaSeparatedSingleValues;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformation<R> {

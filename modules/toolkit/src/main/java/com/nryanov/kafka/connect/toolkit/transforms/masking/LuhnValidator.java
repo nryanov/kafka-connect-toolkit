@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.masking;
+package com.nryanov.kafka.connect.toolkit.transforms.masking;
 
 public final class LuhnValidator {
     private static final int MODULUS = 10;
