@@ -1,7 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -12,10 +11,10 @@ import java.math.BigInteger;
 import java.math.MathContext;
 import java.util.Map;
 
-public class DecimalScaleAndPrecisionNormalizerFieldValueTest {
+public class DecimalAdjustScaleAndPrecisionFieldValueTest {
     @Test
     public void foo() {
-        var transform = new DecimalScaleAndPrecisionNormalizerFieldValue<SinkRecord>();
+        var transform = new DecimalAdjustScaleAndPrecisionFieldValue<SinkRecord>();
         transform.configure(Map.of());
 
         var scale = 5;

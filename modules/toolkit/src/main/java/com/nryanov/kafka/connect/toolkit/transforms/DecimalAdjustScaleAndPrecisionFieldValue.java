@@ -17,13 +17,36 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public class DecimalScaleAndPrecisionNormalizerFieldValue<R extends ConnectRecord<R>> implements Transformation<R> {
+public class DecimalAdjustScaleAndPrecisionFieldValue<R extends ConnectRecord<R>> implements Transformation<R> {
     private final static String DECIMAL_PRECISION_PROPERTY = "connect.decimal.precision";
     private final static String DECIMAL_SCALE_PROPERTY = "scale";
 
+    private final static String PRECISION = "precision.value";
+    private final static String PRECISION_MODE = "precision.mode";
+    private final static String UNDEFINED_PRECISION_VALUE = "precision.undefined-value";
+    private final static String SCALE = "scale.value";
+    private final static String SCALE_MODE = "scale.mode";
+    private final static String UNDEFINED_SCALE_VALUE = "scale.undefined-value";
+    private final static ConfigDef CONFIG_DEF =
+            new ConfigDef()
+                    .define(
+                            PRECISION,
+                            ConfigDef.Type.STRING,
+                            null,
+                            ConfigDef.Importance.HIGH,
+                            "New precision value"
+                    )
+                    .define(
+                            SCALE,
+                            ConfigDef.Type.STRING,
+                            null,
+                            ConfigDef.Importance.HIGH,
+                            "New scale value"
+                    );
+
     @Override
     public ConfigDef config() {
-        return null;
+        return CONFIG_DEF;
     }
 
     @Override
