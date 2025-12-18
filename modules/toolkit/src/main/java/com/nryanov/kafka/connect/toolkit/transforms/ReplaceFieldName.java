@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.nryanov.kafka.connect.toolkit.transforms.trie.PrefixTrie;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -10,7 +11,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -69,52 +69,6 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
                             ConfigDef.Importance.MEDIUM,
                             "Fields to include. If specified, only the named fields will be included in the resulting Struct or Map."
                     );
-
-    private static class PrefixTrie {
-        final Map<String, PrefixTrie> trie = new HashMap<>();
-
-        public PrefixTrie() {}
-
-        void build(Collection<String> includeFields) {
-            includeFields.forEach(it -> {
-                var splits = it.split("[.]");
-
-                var current = this;
-                for (var split : splits) {
-                    var next = current.trie.get(split);
-                    if (next == null) {
-                        next = new PrefixTrie();
-                        current.trie.put(split, next);
-                    }
-
-                    current = next;
-                }
-            });
-        }
-
-        boolean isEmpty() {
-            return trie.isEmpty();
-        }
-
-        boolean shouldInclude(String value) {
-            var splits = value.split("[.]");
-
-            var current = this;
-            var i = 0;
-
-            for (; i < splits.length && current.trie.containsKey(splits[i]); i++) {
-                current = current.trie.get(splits[i]);
-            }
-
-            // specific field should be included
-            if (i == splits.length) {
-                return true;
-            }
-
-            // all child fields should be included or this filed and it's child should be excluded
-            return current.trie.isEmpty();
-        }
-    }
 
     private record Triplet(
             Set<String> excludeFields,

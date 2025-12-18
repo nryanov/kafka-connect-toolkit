@@ -48,6 +48,10 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
     private final static String DECIMAL_PRECISION_PROPERTY = "connect.decimal.precision";
     private final static String DECIMAL_SCALE_PROPERTY = "scale";
 
+    // NULL, * , list of concrete fields
+    private final static String KEY_FIELDS = "key.fields";
+    private final static String VALUE_FIELDS = "value.fields";
+
     private final static String PRECISION = "precision.value";
     private final static String PRECISION_MODE = "precision.mode";
     private final static String UNDEFINED_PRECISION_VALUE = "precision.undefined-value";
