@@ -11,8 +11,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -93,16 +91,7 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
         }
     }
 
-    private final Set<String> keyExcludeFields = new HashSet<>();
-    private final Map<String, String> keyReplaceFields = new HashMap<>();
-    private final Set<String> keyIncludeFields = new HashSet<>();
-
     private Triplet keyTriplet;
-
-    private final Set<String> valueExcludeFields = new HashSet<>();
-    private final Map<String, String> valueReplaceFields = new HashMap<>();
-    private final Set<String> valueIncludeFields = new HashSet<>();
-
     private Triplet valueTriplet;
 
     @Override
@@ -119,14 +108,14 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
-        parseCommaSeparatedSingleValues(config, KEY_EXCLUDE, keyExcludeFields);
-        parseCommaSeparatedSingleValues(config, VALUE_EXCLUDE, valueExcludeFields);
+        var keyExcludeFields = parseCommaSeparatedSingleValues(config, KEY_EXCLUDE);
+        var valueExcludeFields = parseCommaSeparatedSingleValues(config, VALUE_EXCLUDE);
 
-        parseCommaSeparatedPairs(config, KEY_REPLACE, keyReplaceFields);
-        parseCommaSeparatedPairs(config, VALUE_REPLACE, valueReplaceFields);
+        var keyReplaceFields = parseCommaSeparatedPairs(config, KEY_REPLACE);
+        var valueReplaceFields = parseCommaSeparatedPairs(config, VALUE_REPLACE);
 
-        parseCommaSeparatedSingleValues(config, KEY_INCLUDE, keyIncludeFields);
-        parseCommaSeparatedSingleValues(config, VALUE_INCLUDE, valueIncludeFields);
+        var keyIncludeFields = parseCommaSeparatedSingleValues(config, KEY_INCLUDE);
+        var valueIncludeFields = parseCommaSeparatedSingleValues(config, VALUE_INCLUDE);
 
         var keyIncludePrefixTrie = new PrefixTrie();
         keyIncludePrefixTrie.build(keyIncludeFields);

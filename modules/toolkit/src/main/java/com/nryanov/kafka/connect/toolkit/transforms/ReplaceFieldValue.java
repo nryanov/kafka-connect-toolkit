@@ -66,8 +66,8 @@ public class ReplaceFieldValue<R extends ConnectRecord<R>> implements Transforma
         }
     }
 
-    private final Map<String, String> keyFieldReplacements = new HashMap<>();
-    private final Map<String, String> valueFieldReplacements = new HashMap<>();
+    private Map<String, String> keyFieldReplacements;
+    private Map<String, String> valueFieldReplacements;
 
     private final Map<String, Replacement> keyFieldMappedReplacements = new HashMap<>();
     private final Map<String, Replacement> valueFieldMappedReplacements = new HashMap<>();
@@ -86,8 +86,8 @@ public class ReplaceFieldValue<R extends ConnectRecord<R>> implements Transforma
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
-        parseCommaSeparatedPairs(config, KEY_REPLACE, keyFieldReplacements);
-        parseCommaSeparatedPairs(config, VALUE_REPLACE, valueFieldReplacements);
+        keyFieldReplacements = parseCommaSeparatedPairs(config, KEY_REPLACE);
+        valueFieldReplacements = parseCommaSeparatedPairs(config, VALUE_REPLACE);
     }
 
     @Override

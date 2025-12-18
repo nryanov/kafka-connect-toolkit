@@ -1,6 +1,9 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFiler;
 import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.transforms.common.Target;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -43,7 +46,8 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
         VALUE // set provided value as a new scale if current scale is < 0
     }
 
-    private record PrecisionAndScale(int precision, int scale) {}
+    private record PrecisionAndScale(int precision, int scale) {
+    }
 
     private final static String DECIMAL_PRECISION_PROPERTY = "connect.decimal.precision";
     private final static String DECIMAL_SCALE_PROPERTY = "scale";
@@ -62,6 +66,20 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
     private final static String UNDEFINED_SCALE_VALUE = "scale.undefined-value";
     private final static ConfigDef CONFIG_DEF =
             new ConfigDef()
+                    .define(
+                            KEY_FIELDS,
+                            ConfigDef.Type.STRING,
+                            "*",
+                            ConfigDef.Importance.MEDIUM,
+                            "List of fields in key-part which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
+                    )
+                    .define(
+                            VALUE_FIELDS,
+                            ConfigDef.Type.STRING,
+                            "*",
+                            ConfigDef.Importance.MEDIUM,
+                            "List of fields in key-part which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
+                    )
                     .define(
                             PRECISION,
                             ConfigDef.Type.INT,
@@ -115,6 +133,8 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
                             "Behavior for scale value if current scale is negative. By default -- do not change it"
                     );
 
+    private FieldFiler keyFieldFilter;
+    private FieldFiler valueFieldFilter;
     private int precision;
     private int scale;
     private PrecisionMode precisionMode;
@@ -138,6 +158,25 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
+        var keyFieldsRaw = config.getString(KEY_FIELDS);
+        var valueFieldsRaw = config.getString(VALUE_FIELDS);
+
+        if (keyFieldsRaw == null) {
+            keyFieldFilter = new FieldFiler.None();
+        } else if ("*".equals(keyFieldsRaw)) {
+            keyFieldFilter = new FieldFiler.All();
+        } else {
+            keyFieldFilter = new FieldFiler.Subset(ConfigParser.parseCommaSeparatedSingleValues(keyFieldsRaw));
+        }
+
+        if (valueFieldsRaw == null) {
+            valueFieldFilter = new FieldFiler.None();
+        } else if ("*".equals(valueFieldsRaw)) {
+            valueFieldFilter = new FieldFiler.All();
+        } else {
+            valueFieldFilter = new FieldFiler.Subset(ConfigParser.parseCommaSeparatedSingleValues(valueFieldsRaw));
+        }
+
         precision = config.getInt(PRECISION);
         precisionMode = PrecisionMode.valueOf(config.getString(PRECISION_MODE));
         undefinedPrecision = config.getInt(UNDEFINED_PRECISION_VALUE);
@@ -155,11 +194,23 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
             return null;
         }
 
-        var mappedKeySchema = applyMappingToSchema(record.keySchema());
-        var mappedValueSchema = applyMappingToSchema(record.valueSchema());
+        var initialParentPath = "";
 
-        var mappedKey = copyValuesToNewSchema(record.keySchema(), mappedKeySchema, record.key());
-        var mappedValue = copyValuesToNewSchema(record.valueSchema(), mappedValueSchema, record.value());
+        var mappedKeySchema = record.keySchema();
+        var mappedKey = record.key();
+
+        if (keyFieldFilter.enabled()) {
+            mappedKeySchema = applyMappingToSchema(Target.KEY, initialParentPath, record.keySchema());
+            mappedKey = copyValuesToNewSchema(Target.KEY, initialParentPath, record.keySchema(), mappedKeySchema, record.key());
+        }
+
+        var mappedValue = record.value();
+        var mappedValueSchema = record.valueSchema();
+
+        if (valueFieldFilter.enabled()) {
+            mappedValueSchema = applyMappingToSchema(Target.VALUE, initialParentPath, record.valueSchema());
+            mappedValue = copyValuesToNewSchema(Target.VALUE, initialParentPath, record.valueSchema(), mappedValueSchema, record.value());
+        }
 
         return record.newRecord(
                 record.topic(),
@@ -172,21 +223,21 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
         );
     }
 
-    private Schema applyMappingToSchema(Schema source) {
+    private Schema applyMappingToSchema(Target targetType, String parent, Schema source) {
         if (source == null) {
             return null;
         }
 
         return switch (source.type()) {
             case ARRAY -> {
-                var mappedSchema = applyMappingToSchema(source.valueSchema());
+                var mappedSchema = applyMappingToSchema(targetType, parent, source.valueSchema());
                 var arrayBuilder = SchemaBuilder.array(mappedSchema).name(source.name());
                 yield SchemaCopyUtil.copySchemaBasics(source, arrayBuilder).build();
             }
-            case STRUCT -> applyMappingsToStruct(source);
+            case STRUCT -> applyMappingsToStruct(targetType, parent, source);
             case BYTES -> {
                 if (Decimal.LOGICAL_NAME.equals(source.name())) {
-                    yield normalizeDecimalSchema(source);
+                    yield normalizeDecimalSchema(targetType, parent, source);
                 }
 
                 yield source;
@@ -195,17 +246,27 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
         };
     }
 
-    private Schema applyMappingsToStruct(Schema struct) {
+    private Schema applyMappingsToStruct(Target targetType, String parent, Schema struct) {
         var copiedSchema = SchemaCopyUtil.copySchemaBasics(struct);
 
         for (var field : struct.fields()) {
-            copiedSchema.field(field.name(), applyMappingToSchema(field.schema()));
+            var nextField = "".equals(parent) ? field.name() : parent + "." + field.name();
+            copiedSchema.field(field.name(), applyMappingToSchema(targetType, nextField, field.schema()));
         }
 
         return copiedSchema.build();
     }
 
-    private Schema normalizeDecimalSchema(Schema decimal) {
+    private Schema normalizeDecimalSchema(Target targetType, String parent, Schema decimal) {
+        var shouldCopy = switch (targetType) {
+            case VALUE -> valueFieldFilter.shouldApply(parent);
+            case KEY -> keyFieldFilter.shouldApply(parent);
+        };
+
+        if (!shouldCopy) {
+            return decimal;
+        }
+
         var newDecimalSchema = SchemaCopyUtil.copySchemaBasics(decimal);
         var precisionAndScale = resolvePrecisionAndScale(decimal);
 
@@ -219,17 +280,17 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
         return newDecimalSchema.build();
     }
 
-    private Object copyValuesToNewSchema(Schema source, Schema target, Object input) {
+    private Object copyValuesToNewSchema(Target targetType, String parent, Schema source, Schema target, Object input) {
         if (input == null) {
             return null;
         }
 
         return switch (source.type()) {
-            case ARRAY -> copyArray(source.valueSchema(), target.valueSchema(), input);
-            case STRUCT -> copyStruct(source, target, input);
+            case ARRAY -> copyArray(targetType, parent, source.valueSchema(), target.valueSchema(), input);
+            case STRUCT -> copyStruct(targetType, parent, source, target, input);
             case BYTES -> {
                 if (Decimal.LOGICAL_NAME.equals(source.name())) {
-                    yield copyDecimal(source, target, input);
+                    yield copyDecimal(targetType, parent, source, target, input);
                 }
 
                 yield source;
@@ -239,13 +300,13 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
     }
 
     @SuppressWarnings("unchecked")
-    private List<Object> copyArray(Schema source, Schema target, Object input) {
+    private List<Object> copyArray(Target targetType, String parent, Schema source, Schema target, Object input) {
         var inputObjects = (List<Object>) input;
 
-        return inputObjects.stream().map(it -> copyValuesToNewSchema(source, target, it)).toList();
+        return inputObjects.stream().map(it -> copyValuesToNewSchema(targetType, parent, source, target, it)).toList();
     }
 
-    private Struct copyStruct(Schema source, Schema target, Object input) {
+    private Struct copyStruct(Target targetType, String parent, Schema source, Schema target, Object input) {
         var currentStruct = requireStruct(input, "struct required");
         var newStruct = new Struct(target);
 
@@ -254,13 +315,24 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
             var currentSchema = field.schema();
             var targetSchema = target.field(field.name()).schema();
 
-            newStruct.put(field, copyValuesToNewSchema(currentSchema, targetSchema, currentValue));
+            var nextField = "".equals(parent) ? field.name() : parent + "." + field.name();
+
+            newStruct.put(field, copyValuesToNewSchema(targetType, nextField, currentSchema, targetSchema, currentValue));
         }
 
         return newStruct;
     }
 
-    private Object copyDecimal(Schema source, Schema target, Object input) {
+    private Object copyDecimal(Target targetType, String parent, Schema source, Schema target, Object input) {
+        var shouldCopy = switch (targetType) {
+            case VALUE -> valueFieldFilter.shouldApply(parent);
+            case KEY -> keyFieldFilter.shouldApply(parent);
+        };
+
+        if (!shouldCopy) {
+            return input;
+        }
+
         var currentDecimal = (BigDecimal) input;
 
         var updatedScale = Integer.parseInt(target.parameters().getOrDefault(DECIMAL_SCALE_PROPERTY, String.valueOf(undefinedScale)));
@@ -297,9 +369,9 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
         // mode is VALUE
         var shouldSetScale =
                 (ScaleMode.IF_NOT_SET.equals(scaleMode) && isScaleUndefined)
-                || (ScaleMode.LIMIT.equals(scaleMode) && isScaleExceeded)
-                || (ScaleMode.VALUE.equals(scaleMode))
-                || (ScaleNegativeMode.VALUE.equals(scaleNegativeMode) && isScaleNegative);
+                        || (ScaleMode.LIMIT.equals(scaleMode) && isScaleExceeded)
+                        || (ScaleMode.VALUE.equals(scaleMode))
+                        || (ScaleNegativeMode.VALUE.equals(scaleNegativeMode) && isScaleNegative);
 
         var shouldSetScaleToZero = (ScaleZeroMode.VALUE.equals(scaleZeroMode) && isScaleZero);
 
