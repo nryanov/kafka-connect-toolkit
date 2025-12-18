@@ -88,19 +88,19 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
                     ).define(
                             PRECISION_MODE,
                             ConfigDef.Type.STRING,
-                            ConfigDef.NO_DEFAULT_VALUE,
+                            PrecisionMode.NONE.name(),
                             ConfigDef.Importance.MEDIUM,
                             "Behavior for precision value. By default -- do not change it"
                     ).define(
                             SCALE_MODE,
                             ConfigDef.Type.STRING,
-                            ConfigDef.NO_DEFAULT_VALUE,
+                            ScaleMode.NONE.name(),
                             ConfigDef.Importance.MEDIUM,
                             "Behavior for scale value. By default -- do not change it"
                     ).define(
                             SCALE_ZERO_MODE,
                             ConfigDef.Type.STRING,
-                            ConfigDef.NO_DEFAULT_VALUE,
+                            ScaleZeroMode.NONE.name(),
                             ConfigDef.Importance.MEDIUM,
                             "Behavior for scale value if current scale is zero. By default -- do not change it"
                     ).define(

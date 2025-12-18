@@ -11,11 +11,17 @@ import java.math.BigInteger;
 import java.math.MathContext;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+
 public class DecimalAdjustScaleAndPrecisionTest {
     @Test
-    public void foo() {
+    public void doNotChangePrecisionAndScaleWhenAllModesAreNone() {
         var transform = new DecimalAdjustScaleAndPrecision<SinkRecord>();
-        transform.configure(Map.of());
+        transform.configure(Map.of(
+                "precision.value", 10,
+                "scale.value", 5
+        ));
 
         var scale = 5;
         var precision = 10;
@@ -30,15 +36,15 @@ public class DecimalAdjustScaleAndPrecisionTest {
         var valueStruct = new Struct(schema).put("decimal", decimalValue);
 
         var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+
         var result = transform.apply(record);
+        var resultKeyStruct = requireStruct(result.key(), "test");
+        var resultValueStruct = requireStruct(result.value(), "test");
 
-        System.out.println(result.keySchema().field("decimal").schema().parameters());
-        System.out.println(result.valueSchema().field("decimal").schema().parameters());
+        assertEquals(schema, result.keySchema());
+        assertEquals(schema, result.valueSchema());
 
-        System.out.println(record.key());
-        System.out.println(record.value());
-
-        System.out.println("NEW KEY: " + result.key());
-        System.out.println("NEW VALUE: " + result.value());
+        assertEquals(decimalKey, resultKeyStruct.get("decimal"));
+        assertEquals(decimalValue, resultValueStruct.get("decimal"));
     }
 }
