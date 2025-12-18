@@ -1,5 +1,8 @@
 # kafka-connect-toolkit
 
+# TODO
+Correctly handle optional schemas
+
 ## Toolkit
 ### CardMaskFieldValue
 `CardMaskFieldValue` transform allow to mask card number(s) in a text value. Under the hood a Luhn algorithm is used to determine a valid card numbers for masking.
