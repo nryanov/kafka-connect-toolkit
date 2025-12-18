@@ -11,10 +11,10 @@ import java.math.BigInteger;
 import java.math.MathContext;
 import java.util.Map;
 
-public class DecimalAdjustScaleAndPrecisionFieldValueTest {
+public class DecimalAdjustScaleAndPrecisionTest {
     @Test
     public void foo() {
-        var transform = new DecimalAdjustScaleAndPrecisionFieldValue<SinkRecord>();
+        var transform = new DecimalAdjustScaleAndPrecision<SinkRecord>();
         transform.configure(Map.of());
 
         var scale = 5;
