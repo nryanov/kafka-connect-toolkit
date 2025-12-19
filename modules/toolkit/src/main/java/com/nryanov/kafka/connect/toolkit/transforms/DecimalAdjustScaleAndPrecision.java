@@ -69,14 +69,14 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
                     .define(
                             KEY_FIELDS,
                             ConfigDef.Type.STRING,
-                            "*",
+                            null,
                             ConfigDef.Importance.MEDIUM,
                             "List of fields in key-part which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
                     )
                     .define(
                             VALUE_FIELDS,
                             ConfigDef.Type.STRING,
-                            "*",
+                            null,
                             ConfigDef.Importance.MEDIUM,
                             "List of fields in key-part which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
                     )
@@ -316,7 +316,6 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
             var targetSchema = target.field(field.name()).schema();
 
             var nextField = "".equals(parent) ? field.name() : parent + "." + field.name();
-
             newStruct.put(field, copyValuesToNewSchema(targetType, nextField, currentSchema, targetSchema, currentValue));
         }
 
@@ -371,9 +370,8 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
                 (ScaleMode.IF_NOT_SET.equals(scaleMode) && isScaleUndefined)
                         || (ScaleMode.LIMIT.equals(scaleMode) && isScaleExceeded)
                         || (ScaleMode.VALUE.equals(scaleMode))
-                        || (ScaleNegativeMode.VALUE.equals(scaleNegativeMode) && isScaleNegative);
-
-        var shouldSetScaleToZero = (ScaleZeroMode.VALUE.equals(scaleZeroMode) && isScaleZero);
+                        || (ScaleNegativeMode.VALUE.equals(scaleNegativeMode) && isScaleNegative)
+                        || (ScaleZeroMode.VALUE.equals(scaleZeroMode) && isScaleZero);
 
         var targetPrecision = currentPrecision;
         var targetScale = currentScale;
@@ -384,8 +382,6 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
 
         if (shouldSetScale) {
             targetScale = scale;
-        } else if (shouldSetScaleToZero) {
-            targetScale = 0;
         }
 
         return new PrecisionAndScale(targetPrecision, targetScale);
