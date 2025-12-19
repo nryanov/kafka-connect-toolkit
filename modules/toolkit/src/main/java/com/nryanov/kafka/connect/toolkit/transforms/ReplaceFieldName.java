@@ -179,7 +179,6 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
             }
 
             var mappedName = triplet.replacedFieldName(fullPath, field.name());
-
             copiedSchema.field(mappedName, applyMappingToSchema(triplet, fullPath, field.schema()));
         }
 

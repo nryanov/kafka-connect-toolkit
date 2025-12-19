@@ -145,7 +145,7 @@ public class ReplaceFieldValue<R extends ConnectRecord<R>> implements Transforma
 
         for (var field : schema.fields()) {
             var nextField = "".equals(parent) ? field.name() : parent + "." + field.name();
-            newStruct.put(field, applyReplacements(target, nextField, field.schema(), currentStruct.get(field)));
+            newStruct.put(field.name(), applyReplacements(target, nextField, field.schema(), currentStruct.get(field)));
         }
 
         return newStruct;
