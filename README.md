@@ -1,6 +1,22 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### BytesToString
+Decode bytes into string.
+This transform allows:
+- Specify all fields (in key,value part) using `*`
+- Specify concrete fields to change. You can set only parent fields -- in this case all child fields also will be changed
+- Specify charset which should be used to decode string
+
+```properties
+transforms=bytesToString
+transforms.bytesToString.type=com.nryanov.kafka.connect.toolkit.BytesToString
+
+transforms.bytesToString.key.fields={comma-separated list of fields in key-part | *} # default: null
+transforms.bytesToString.value.fields={comma-separated list of fields in value-part | *} # default: null
+transforms.bytesToString.charset={charset} # default: UTF-8
+```
+
 ### DecimalAdjustScaleAndPrecision
 Some target sinks may not support decimals with high precision, or you want to change precision/scale of decimals in event to desired values.
 `DecimalAdjustScaleAndPrecision` transform allows to achieve it.

@@ -163,7 +163,7 @@ public class NormalizeFieldValue<R extends ConnectRecord<R>> implements Transfor
 
         for (var field : schema.fields()) {
             var nextField = "".equals(parentFieldName) ? field.name() : parentFieldName + "." + field.name();
-            copiedStruct.put(field, applyMappings(mappings, nextField, field.schema(), input.get(field)));
+            copiedStruct.put(field.name(), applyMappings(mappings, nextField, field.schema(), input.get(field)));
         }
 
         return copiedStruct;

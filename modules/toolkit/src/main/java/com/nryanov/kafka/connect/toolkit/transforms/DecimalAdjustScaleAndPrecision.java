@@ -78,7 +78,7 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
                             ConfigDef.Type.STRING,
                             null,
                             ConfigDef.Importance.MEDIUM,
-                            "List of fields in key-part which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
+                            "List of fields in value-part which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
                     )
                     .define(
                             PRECISION,
