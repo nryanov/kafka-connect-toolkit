@@ -1,6 +1,47 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### DecimalAdjustScaleAndPrecision
+Some target sinks may not support decimals with high precision, or you want to change precision/scale of decimals in event to desired values.
+`DecimalAdjustScaleAndPrecision` transform allows to achieve it.
+This transform allows:
+- Specify all fields (in key,value part) using `*` 
+- Specify concrete fields to change. You can set only parent fields -- in this case all child fields also will be changed
+- Control whether to update precision using `precision.mode`. Allowed values:
+  - NONE -- does not apply any updates (DEFAULT)
+  - IF_NOT_SET -- set precision only if current precision is undefined
+  - VALUE -- unconditionally set desired precision
+  - LIMIT -- just truncate value's precision if it's current value is bigger than desired 
+- Control whether to update scale using `scale.mode`. Allowed values:
+    - NONE -- does not apply any updates (DEFAULT)
+    - IF_NOT_SET -- set scale only if current scale is undefined
+    - VALUE -- unconditionally set desired scale
+    - LIMIT -- just truncate value's scale if it's current value is bigger than desired
+- Specify value which should be considered as undefined for precision using `precision.undefined-value`. By default, it's `-1`
+- Specify value which should be considered as undefined for scale using `scale.undefined-value`. By default, it's `-1`
+- Update scale only if current scale is undefined using `scale.zero-mode`:
+    - NONE -- does not apply any updates (DEFAULT)
+    - VALUE -- set desired value for scale if current scale is zero
+- Update scale only if current scale is negative using `scale.negative-mode`:
+    - NONE -- does not apply any updates (DEFAULT)
+    - VALUE -- set desired value for scale if current scale is negative
+
+```properties
+transforms=decimalAdjustScaleAndPrecision
+transforms.decimalAdjustScaleAndPrecision.type=com.nryanov.kafka.connect.toolkit.DecimalAdjustScaleAndPrecision
+
+transforms.decimalAdjustScaleAndPrecision.key.fields={comma-separated list of fields in key-part | *} # default: null
+transforms.decimalAdjustScaleAndPrecision.value.fields={comma-separated list of fields in value-part | *} # default: null
+transforms.decimalAdjustScaleAndPrecision.precision.value={target precision value} # default: null
+transforms.decimalAdjustScaleAndPrecision.precision.mode={NONE|IF_NOT_SET|VALUE|LIMIT} # default: NONE
+transforms.decimalAdjustScaleAndPrecision.precision.undefined-value={value which should be considered as undefined} # default: -1
+transforms.decimalAdjustScaleAndPrecision.scale.value={target scale value} # default: null
+transforms.decimalAdjustScaleAndPrecision.scale.mode={NONE|IF_NOT_SET|VALUE|LIMIT} # default: NONE
+transforms.decimalAdjustScaleAndPrecision.scale.zero-mode={NONE|VALUE} # default: NONE
+transforms.decimalAdjustScaleAndPrecision.scale.negative-mode={NONE|VALUE} # default: NONE
+transforms.decimalAdjustScaleAndPrecision.scale.undefined-value={value which should be considered as undefined} # default: -1
+```
+
 ### CardMaskFieldValue
 `CardMaskFieldValue` transform allow to mask card number(s) in a text value. Under the hood a Luhn algorithm is used to determine a valid card numbers for masking.
 To setup this transform in a minimum configuration you should set field(s) of key and/or value parts which may contain card numbers which should be masked.

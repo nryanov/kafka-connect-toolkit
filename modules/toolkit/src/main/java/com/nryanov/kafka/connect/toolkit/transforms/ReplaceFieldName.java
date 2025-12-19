@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.nryanov.kafka.connect.toolkit.transforms.trie.PrefixTrie;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -10,15 +11,12 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.nryanov.kafka.connect.toolkit.common.ConfigParser.parseCommaSeparatedPairs;
-import static com.nryanov.kafka.connect.toolkit.common.ConfigParser.parseCommaSeparatedSingleValues;
+import static com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser.parseCommaSeparatedPairs;
+import static com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser.parseCommaSeparatedSingleValues;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformation<R> {
@@ -70,52 +68,6 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
                             "Fields to include. If specified, only the named fields will be included in the resulting Struct or Map."
                     );
 
-    private static class PrefixTrie {
-        final Map<String, PrefixTrie> trie = new HashMap<>();
-
-        public PrefixTrie() {}
-
-        void build(Collection<String> includeFields) {
-            includeFields.forEach(it -> {
-                var splits = it.split("[.]");
-
-                var current = this;
-                for (var split : splits) {
-                    var next = current.trie.get(split);
-                    if (next == null) {
-                        next = new PrefixTrie();
-                        current.trie.put(split, next);
-                    }
-
-                    current = next;
-                }
-            });
-        }
-
-        boolean isEmpty() {
-            return trie.isEmpty();
-        }
-
-        boolean shouldInclude(String value) {
-            var splits = value.split("[.]");
-
-            var current = this;
-            var i = 0;
-
-            for (; i < splits.length && current.trie.containsKey(splits[i]); i++) {
-                current = current.trie.get(splits[i]);
-            }
-
-            // specific field should be included
-            if (i == splits.length) {
-                return true;
-            }
-
-            // all child fields should be included or this filed and it's child should be excluded
-            return current.trie.isEmpty();
-        }
-    }
-
     private record Triplet(
             Set<String> excludeFields,
             Map<String, String> replaceFields,
@@ -139,16 +91,7 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
         }
     }
 
-    private final Set<String> keyExcludeFields = new HashSet<>();
-    private final Map<String, String> keyReplaceFields = new HashMap<>();
-    private final Set<String> keyIncludeFields = new HashSet<>();
-
     private Triplet keyTriplet;
-
-    private final Set<String> valueExcludeFields = new HashSet<>();
-    private final Map<String, String> valueReplaceFields = new HashMap<>();
-    private final Set<String> valueIncludeFields = new HashSet<>();
-
     private Triplet valueTriplet;
 
     @Override
@@ -165,14 +108,14 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
-        parseCommaSeparatedSingleValues(config, KEY_EXCLUDE, keyExcludeFields);
-        parseCommaSeparatedSingleValues(config, VALUE_EXCLUDE, valueExcludeFields);
+        var keyExcludeFields = parseCommaSeparatedSingleValues(config, KEY_EXCLUDE);
+        var valueExcludeFields = parseCommaSeparatedSingleValues(config, VALUE_EXCLUDE);
 
-        parseCommaSeparatedPairs(config, KEY_REPLACE, keyReplaceFields);
-        parseCommaSeparatedPairs(config, VALUE_REPLACE, valueReplaceFields);
+        var keyReplaceFields = parseCommaSeparatedPairs(config, KEY_REPLACE);
+        var valueReplaceFields = parseCommaSeparatedPairs(config, VALUE_REPLACE);
 
-        parseCommaSeparatedSingleValues(config, KEY_INCLUDE, keyIncludeFields);
-        parseCommaSeparatedSingleValues(config, VALUE_INCLUDE, valueIncludeFields);
+        var keyIncludeFields = parseCommaSeparatedSingleValues(config, KEY_INCLUDE);
+        var valueIncludeFields = parseCommaSeparatedSingleValues(config, VALUE_INCLUDE);
 
         var keyIncludePrefixTrie = new PrefixTrie();
         keyIncludePrefixTrie.build(keyIncludeFields);
