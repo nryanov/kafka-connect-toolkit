@@ -1,6 +1,20 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### BytesToBase64
+Encode bytes into base64 string.
+This transform allows:
+- Specify all fields (in key,value part) using `*`
+- Specify concrete fields to change. You can set only parent fields -- in this case all child fields also will be changed
+
+```properties
+transforms=bytesToBase64
+transforms.bytesToBase64.type=com.nryanov.kafka.connect.toolkit.BytesToBase64
+
+transforms.bytesToBase64.key.fields={comma-separated list of fields in key-part | *} # default: null
+transforms.bytesToBase64.value.fields={comma-separated list of fields in value-part | *} # default: null
+```
+
 ### BytesToString
 Decode bytes into string.
 This transform allows:
