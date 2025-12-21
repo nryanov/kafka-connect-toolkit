@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
 import com.nryanov.kafka.connect.toolkit.transforms.trie.PrefixTrie;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -157,7 +158,7 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
             case ARRAY -> {
                 var mappedSchema = applyMappingToSchema(triplet, parent, source.valueSchema());
                 var arrayBuilder = SchemaBuilder.array(mappedSchema).name(source.name());
-                yield SchemaUtil.copySchemaBasics(source, arrayBuilder).build();
+                yield SchemaCopyUtil.copySchemaBasics(source, arrayBuilder).build();
             }
             case STRUCT -> applyMappingsToStruct(triplet, parent, source);
             case null, default -> source;
@@ -165,7 +166,7 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
     }
 
     private Schema applyMappingsToStruct(Triplet triplet, String parent, Schema struct) {
-        var copiedSchema = SchemaUtil.copySchemaBasics(struct);
+        var copiedSchema = SchemaCopyUtil.copySchemaBasics(struct);
 
         for (var field : struct.fields()) {
             var fullPath = triplet.fullPath(parent, field);
