@@ -1,6 +1,13 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### SwapValueAndKey
+Swap key and value of record
+```properties
+transforms=swapValueAndKey
+transforms.swapValueAndKey.type=com.nryanov.kafka.connect.toolkit.SwapValueAndKey
+```
+
 ### BytesToBase64
 Encode bytes into base64 string.
 This transform allows:
