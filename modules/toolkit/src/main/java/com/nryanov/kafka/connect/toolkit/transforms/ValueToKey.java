@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,7 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 
 public class ValueToKey<R extends ConnectRecord<R>> implements Transformation<R> {
     private final static String FIELDS = "fields";
+    private final static String DEFAULT_SUFFIX = "suffix";
 
     private final static ConfigDef CONFIG_DEF =
             new ConfigDef()
@@ -27,10 +29,18 @@ public class ValueToKey<R extends ConnectRecord<R>> implements Transformation<R>
                             null,
                             ConfigDef.Importance.MEDIUM,
                             "Comma separated list of fields in value which should be copied to key. Fields may be nested, but in result they will be in top of structure of key"
+                    )
+                    .define(
+                            DEFAULT_SUFFIX,
+                            ConfigDef.Type.STRING,
+                            "_key",
+                            ConfigDef.Importance.MEDIUM,
+                            "Default suffix which should be used for re-naming if field should be copied (e.g. it's a leaf field) but concrete renaming for it is not defined"
                     );
 
     private Map<String, String> mappings;
-    private FieldFiler.Subset filer;
+    private FieldFiler filer;
+    private String suffix;
 
     @Override
     public ConfigDef config() {
@@ -45,8 +55,18 @@ public class ValueToKey<R extends ConnectRecord<R>> implements Transformation<R>
     @Override
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
-        mappings = ConfigParser.parseCommaSeparatedPairs(config, FIELDS);
-        filer = new FieldFiler.Subset(mappings.keySet());
+        var mappingsRaw = config.getString(FIELDS);
+
+        if (mappingsRaw != null && !"*".equals(mappingsRaw)) {
+            mappings = ConfigParser.parseCommaSeparatedPairs(config, FIELDS);
+            filer = new FieldFiler.Subset(mappings.keySet());
+        } else if ("*".equals(mappingsRaw)) {
+            mappings = new HashMap<>();
+            filer = new FieldFiler.All();
+        } else {
+            filer = new FieldFiler.None();
+        }
+        suffix = config.getString(DEFAULT_SUFFIX);
     }
 
     @Override
@@ -92,7 +112,7 @@ public class ValueToKey<R extends ConnectRecord<R>> implements Transformation<R>
             var fieldFullPath = "".equals(parent) ? field.name() : parent + "." + field.name();
 
             if (filer.shouldApply(fieldFullPath)) {
-                var mappedFieldName = mappings.get(fieldFullPath);
+                var mappedFieldName = mappings.getOrDefault(fieldFullPath, field.name() + suffix);
                 copiedSchema.field(mappedFieldName, extractSchemaPatch(fieldFullPath, field.schema()));
             }
         }
@@ -127,7 +147,7 @@ public class ValueToKey<R extends ConnectRecord<R>> implements Transformation<R>
             var fieldFullPath = "".equals(parent) ? field.name() : parent + "." + field.name();
 
             if (filer.shouldApply(fieldFullPath)) {
-                var mappedFieldName = mappings.get(fieldFullPath);
+                var mappedFieldName = mappings.getOrDefault(fieldFullPath, field.name() + suffix);
 
                 var currentValue = currentStruct.get(field);
                 var currentSchema = field.schema();
