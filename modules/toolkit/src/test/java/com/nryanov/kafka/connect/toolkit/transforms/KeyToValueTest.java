@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class KeyToValueTest {
     @Test
-    public void addFieldsToKeyFromValue() {
+    public void addFieldsToValueFromKey() {
         var transform = new KeyToValue<SinkRecord>();
         transform.configure(Map.of(
                 "fields", "b:copied_b,c:copied_c"
@@ -21,44 +21,44 @@ public class KeyToValueTest {
 
         var keySchema = SchemaBuilder
                 .struct()
-                .field("a", Schema.STRING_SCHEMA)
-                .build();
-
-        var valueSchema = SchemaBuilder
-                .struct()
                 .field("b", Schema.INT32_SCHEMA)
                 .field("c", Schema.STRING_SCHEMA)
                 .build();
 
         var keyStruct = new Struct(keySchema)
-                .put("a", "a_field_value");
-
-        var valueStruct = new Struct(valueSchema)
                 .put("b", 1)
                 .put("c", "c_field_value");
+
+        var valueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .build();
+
+        var valueStruct = new Struct(valueSchema)
+                .put("a", "a_field_value");
 
         var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
 
         var result = transform.apply(record);
 
-        var expectedKeySchema = SchemaBuilder
+        var expectedSchema = SchemaBuilder
                 .struct()
                 .field("a", Schema.STRING_SCHEMA)
                 .field("copied_b", Schema.INT32_SCHEMA)
                 .field("copied_c", Schema.STRING_SCHEMA)
                 .build();
 
-        var expectedKeyStruct = new Struct(expectedKeySchema)
+        var expectedStruct = new Struct(expectedSchema)
                 .put("a", "a_field_value")
                 .put("copied_b", 1)
                 .put("copied_c", "c_field_value");
 
-        assertEquals(expectedKeySchema, result.keySchema());
-        assertEquals(expectedKeyStruct, result.key());
+        assertEquals(expectedSchema, result.valueSchema());
+        assertEquals(expectedStruct, result.value());
     }
 
     @Test
-    public void copyAllFields() {
+    public void copyAllFieldsToValueFromKey() {
         var transform = new KeyToValue<SinkRecord>();
         transform.configure(Map.of(
                 "fields", "*"
@@ -66,40 +66,40 @@ public class KeyToValueTest {
 
         var keySchema = SchemaBuilder
                 .struct()
-                .field("a", Schema.STRING_SCHEMA)
-                .build();
-
-        var valueSchema = SchemaBuilder
-                .struct()
                 .field("b", Schema.INT32_SCHEMA)
                 .field("c", Schema.STRING_SCHEMA)
                 .build();
 
         var keyStruct = new Struct(keySchema)
-                .put("a", "a_field_value");
-
-        var valueStruct = new Struct(valueSchema)
                 .put("b", 1)
                 .put("c", "c_field_value");
+
+        var valueSchema = SchemaBuilder
+                .struct()
+                .field("a", Schema.STRING_SCHEMA)
+                .build();
+
+        var valueStruct = new Struct(valueSchema)
+                .put("a", "a_field_value");
 
         var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
 
         var result = transform.apply(record);
 
-        var expectedKeySchema = SchemaBuilder
+        var expectedSchema = SchemaBuilder
                 .struct()
                 .field("a", Schema.STRING_SCHEMA)
                 .field("b_copy", Schema.INT32_SCHEMA)
                 .field("c_copy", Schema.STRING_SCHEMA)
                 .build();
 
-        var expectedKeyStruct = new Struct(expectedKeySchema)
+        var expectedStruct = new Struct(expectedSchema)
                 .put("a", "a_field_value")
                 .put("b_copy", 1)
                 .put("c_copy", "c_field_value");
 
-        assertEquals(expectedKeySchema, result.keySchema());
-        assertEquals(expectedKeyStruct, result.key());
+        assertEquals(expectedSchema, result.valueSchema());
+        assertEquals(expectedStruct, result.value());
     }
 
     @Test
@@ -109,11 +109,6 @@ public class KeyToValueTest {
         transform.configure(Map.of(
                 "fields", "array.inner_array_b:single_array_field,struct:all_struct"
         ));
-
-        var keySchema = SchemaBuilder
-                .struct()
-                .field("id", Schema.STRING_SCHEMA)
-                .build();
 
         var nestedArrayStructSchema = SchemaBuilder
                 .struct()
@@ -128,15 +123,13 @@ public class KeyToValueTest {
                 .field("inner_struct_c", Schema.INT32_SCHEMA)
                 .optional()
                 .build();
-        var valueSchema = SchemaBuilder
+
+        var keySchema = SchemaBuilder
                 .struct()
                 .field("plain", Schema.STRING_SCHEMA)
                 .field("array", SchemaBuilder.array(nestedArrayStructSchema).build())
                 .field("struct", nestedStructSchema)
                 .build();
-
-        var keyStruct = new Struct(keySchema)
-                .put("id", "some id");
 
         var nestedArrayStruct1 = new Struct(nestedArrayStructSchema)
                 .put("inner_array_a", null)
@@ -150,10 +143,18 @@ public class KeyToValueTest {
                 .put("inner_struct_a", 64L)
                 .put("inner_struct_b", "inner_struct_b_value")
                 .put("inner_struct_c", 32);
-        var valueStruct = new Struct(valueSchema)
+        var keyStruct = new Struct(keySchema)
                 .put("plain", "plain_value")
                 .put("array", List.of(nestedArrayStruct1, nestedArrayStruct2))
                 .put("struct", nestedStruct);
+
+        var valueSchema = SchemaBuilder
+                .struct()
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+
+        var valueStruct = new Struct(valueSchema)
+                .put("id", "some id");
 
         var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
         var result = transform.apply(record);
@@ -169,7 +170,7 @@ public class KeyToValueTest {
                 .field("inner_struct_c_copy", Schema.INT32_SCHEMA)
                 .optional()
                 .build();
-        var expectedKeySchema = SchemaBuilder
+        var expectedSchema = SchemaBuilder
                 .struct()
                 .field("id", Schema.STRING_SCHEMA)
                 .field("array_copy", SchemaBuilder.array(expectedNestedArrayStructSchema).build())
@@ -184,13 +185,13 @@ public class KeyToValueTest {
                 .put("inner_struct_a_copy", 64L)
                 .put("inner_struct_b_copy", "inner_struct_b_value")
                 .put("inner_struct_c_copy", 32);
-        var expectedKeyStruct = new Struct(expectedKeySchema)
+        var expectedStruct = new Struct(expectedSchema)
                 .put("id", "some id")
                 .put("array_copy", List.of(expectedNestedArrayStruct1, expectedNestedArrayStruct2))
                 .put("all_struct", expectedNestedStruct);
 
-        assertEquals(expectedKeySchema, result.keySchema());
-        assertEquals(expectedKeyStruct, result.key());
+        assertEquals(expectedSchema, result.valueSchema());
+        assertEquals(expectedStruct, result.value());
     }
 
     @Test
@@ -201,12 +202,6 @@ public class KeyToValueTest {
                 "fields", "array.inner_array_b:single_array_field,struct:all_struct",
                 "suffix", "_custom"
         ));
-
-        var keySchema = SchemaBuilder
-                .struct()
-                .field("id", Schema.STRING_SCHEMA)
-                .build();
-
         var nestedArrayStructSchema = SchemaBuilder
                 .struct()
                 .field("inner_array_a", Schema.OPTIONAL_STRING_SCHEMA)
@@ -220,15 +215,12 @@ public class KeyToValueTest {
                 .field("inner_struct_c", Schema.INT32_SCHEMA)
                 .optional()
                 .build();
-        var valueSchema = SchemaBuilder
+        var keySchema = SchemaBuilder
                 .struct()
                 .field("plain", Schema.STRING_SCHEMA)
                 .field("array", SchemaBuilder.array(nestedArrayStructSchema).build())
                 .field("struct", nestedStructSchema)
                 .build();
-
-        var keyStruct = new Struct(keySchema)
-                .put("id", "some id");
 
         var nestedArrayStruct1 = new Struct(nestedArrayStructSchema)
                 .put("inner_array_a", null)
@@ -242,10 +234,18 @@ public class KeyToValueTest {
                 .put("inner_struct_a", 64L)
                 .put("inner_struct_b", "inner_struct_b_value")
                 .put("inner_struct_c", 32);
-        var valueStruct = new Struct(valueSchema)
+        var keyStruct = new Struct(keySchema)
                 .put("plain", "plain_value")
                 .put("array", List.of(nestedArrayStruct1, nestedArrayStruct2))
                 .put("struct", nestedStruct);
+
+        var valueSchema = SchemaBuilder
+                .struct()
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+
+        var valueStruct = new Struct(valueSchema)
+                .put("id", "some id");
 
         var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
         var result = transform.apply(record);
@@ -261,7 +261,7 @@ public class KeyToValueTest {
                 .field("inner_struct_c_custom", Schema.INT32_SCHEMA)
                 .optional()
                 .build();
-        var expectedKeySchema = SchemaBuilder
+        var expectedSchema = SchemaBuilder
                 .struct()
                 .field("id", Schema.STRING_SCHEMA)
                 .field("array_custom", SchemaBuilder.array(expectedNestedArrayStructSchema).build())
@@ -276,12 +276,12 @@ public class KeyToValueTest {
                 .put("inner_struct_a_custom", 64L)
                 .put("inner_struct_b_custom", "inner_struct_b_value")
                 .put("inner_struct_c_custom", 32);
-        var expectedKeyStruct = new Struct(expectedKeySchema)
+        var expectedStruct = new Struct(expectedSchema)
                 .put("id", "some id")
                 .put("array_custom", List.of(expectedNestedArrayStruct1, expectedNestedArrayStruct2))
                 .put("all_struct", expectedNestedStruct);
 
-        assertEquals(expectedKeySchema, result.keySchema());
-        assertEquals(expectedKeyStruct, result.key());
+        assertEquals(expectedSchema, result.valueSchema());
+        assertEquals(expectedStruct, result.value());
     }
 }

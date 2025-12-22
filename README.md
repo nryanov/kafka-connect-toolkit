@@ -1,6 +1,23 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### KeyToValue
+Copies specified (or all) fields from key part to value. Allows to specify:
+- All fields `*`
+- Concrete fields including nested in format: `{full_field_path:name}`
+
+In result copied fields will be added to the root value structure (not in the nested ones).
+If field should be copied (e.g. leaf field of nested struct -> nested struct field should also be copied) but it has no name mapping then `field.name + suffix` will be used. `suffix` can be changed.
+
+```properties
+transforms=keyToValue
+transforms.keyToValue.type=com.nryanov.kafka.connect.toolkit.KeyToValue
+
+transforms.keyToValue.fields={* | field_1:renamed_field_1,nested.field.from.struct:target_name}
+# optional
+transforms.keyToValue.suffix={custom suffix for fields without mapping} # default: _key
+```
+
 ### ValueToKey
 Copies specified (or all) fields from value part to key. Allows to specify:
 - All fields `*`
