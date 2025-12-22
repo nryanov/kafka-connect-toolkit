@@ -1,6 +1,15 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### SetNull
+Set value or key as null (payload & schema)
+
+```properties
+transforms=setNullKey,setNullValue
+transforms.setNullKey.type=com.nryanov.kafka.connect.toolkit.SetNull$Key
+transforms.setNullValue.type=com.nryanov.kafka.connect.toolkit.SetNull$Value
+```
+
 ### KeyToValue
 Copies specified (or all) fields from key part to value. Allows to specify:
 - All fields `*`
