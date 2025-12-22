@@ -1,6 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.google.common.base.CaseFormat;
+import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -8,7 +9,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -84,7 +84,7 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
             case ARRAY -> {
                 var mappedSchema = applyMappingToSchema(source.valueSchema());
                 var arrayBuilder = SchemaBuilder.array(mappedSchema).name(source.name());
-                yield SchemaUtil.copySchemaBasics(source, arrayBuilder).build();
+                yield SchemaCopyUtil.copySchemaBasics(source, arrayBuilder).build();
             }
             case STRUCT -> applyMappingsToStruct(source);
             case null, default -> source;
@@ -92,7 +92,7 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
     }
 
     private Schema applyMappingsToStruct(Schema struct) {
-        var copiedSchema = SchemaUtil.copySchemaBasics(struct);
+        var copiedSchema = SchemaCopyUtil.copySchemaBasics(struct);
 
         for (var field : struct.fields()) {
             var name = initialCase.to(targetCase, field.name());
