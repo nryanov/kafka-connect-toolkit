@@ -9,12 +9,12 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ValueToKeyTest {
+public class KeyToValueTest {
     @Test
     public void addFieldsToKeyFromValue() {
-        var transform = new ValueToKey<SinkRecord>();
+        var transform = new KeyToValue<SinkRecord>();
         transform.configure(Map.of(
                 "fields", "b:copied_b,c:copied_c"
         ));
@@ -59,7 +59,7 @@ public class ValueToKeyTest {
 
     @Test
     public void copyAllFields() {
-        var transform = new ValueToKey<SinkRecord>();
+        var transform = new KeyToValue<SinkRecord>();
         transform.configure(Map.of(
                 "fields", "*"
         ));
@@ -104,7 +104,7 @@ public class ValueToKeyTest {
 
     @Test
     public void copyNestedFields() {
-        var transform = new ValueToKey<SinkRecord>();
+        var transform = new KeyToValue<SinkRecord>();
         // only single field from array and all fields in struct
         transform.configure(Map.of(
                 "fields", "array.inner_array_b:single_array_field,struct:all_struct"
@@ -195,7 +195,7 @@ public class ValueToKeyTest {
 
     @Test
     public void copyNestedFieldsWithCustomDefaultSuffix() {
-        var transform = new ValueToKey<SinkRecord>();
+        var transform = new KeyToValue<SinkRecord>();
         // only single field from array and all fields in struct
         transform.configure(Map.of(
                 "fields", "array.inner_array_b:single_array_field,struct:all_struct",
