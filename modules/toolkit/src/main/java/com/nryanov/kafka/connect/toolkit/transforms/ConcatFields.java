@@ -11,10 +11,12 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.Transformation;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
@@ -82,23 +84,32 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
         delimiter = config.getString(DEFAULT_DELIMITER);
     }
 
-    protected void setConcatenationValue(Map<String, Object> concat, Struct target) {
+    protected void setConcatenationValue(Map<String, List<Object>> concat, Object target) {
+        var struct = requireStruct(target, "struct");
         var result = new StringBuilder();
 
-        var firstField = filter.removeFirst();
+        var firstField = filter.getFirst();
         var firstRawValue = concat.get(firstField);
-        var firstValue = firstRawValue == null ? nullReplacement : firstRawValue.toString();
+        System.out.println("FIRST VALUE: " + firstRawValue);
+        var firstValue = firstRawValue == null ? nullReplacement : firstRawValue
+                .stream()
+                .map(it -> it == null ? nullReplacement : it.toString())
+                .collect(Collectors.joining(delimiter));
+
         result.append(firstValue);
 
         filter.stream().skip(1).forEach(field -> {
             result.append(delimiter);
             var rawValue = concat.get(field);
-            var value = rawValue == null ? nullReplacement : rawValue.toString();
+            var value = rawValue == null ? nullReplacement : rawValue
+                    .stream()
+                    .map(it -> it == null ? nullReplacement : it.toString())
+                    .collect(Collectors.joining(delimiter));
 
             result.append(value);
         });
 
-        target.put(outputField, result.toString());
+        struct.put(outputField, result.toString());
     }
 
     protected Schema addFieldToSchema(Schema source) {
@@ -118,26 +129,33 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
         return copiedSchema.build();
     }
 
-    protected Object copyValuesToNewSchema(Map<String, Object> concat, String parent, Schema source, Schema target, Object input) {
-        if (input == null) {
-            return null;
-        }
-
+    protected Object copyValuesToNewSchema(Map<String, List<Object>> concat, String parent, Schema source, Schema target, Object input) {
         return switch (source.type()) {
             case ARRAY -> copyArray(concat, parent, source.valueSchema(), target.valueSchema(), input);
             case STRUCT -> copyStruct(concat, parent, source, target, input);
-            case null, default -> input;
+            case null, default -> {
+                if (filter.contains(parent)) {
+                    var current = concat.get(parent);
+                    if (current == null) {
+                        current = new ArrayList<>();
+                    }
+                    current.add(input);
+                    concat.put(parent, current);
+                }
+
+                yield input;
+            }
         };
     }
 
     @SuppressWarnings("unchecked")
-    protected List<Object> copyArray(Map<String, Object> concat, String parent, Schema source, Schema target, Object input) {
+    protected List<Object> copyArray(Map<String, List<Object>> concat, String parent, Schema source, Schema target, Object input) {
         var inputObjects = (List<Object>) input;
 
         return inputObjects.stream().map(it -> copyValuesToNewSchema(concat, parent, source, target, it)).toList();
     }
 
-    protected Struct copyStruct(Map<String, Object> concat, String parent, Schema source, Schema target, Object input) {
+    protected Struct copyStruct(Map<String, List<Object>> concat, String parent, Schema source, Schema target, Object input) {
         var currentStruct = requireStruct(input, "struct required");
         var newStruct = new Struct(target);
 
@@ -146,10 +164,6 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
             var currentValue = currentStruct.get(field);
             var currentSchema = field.schema();
             var targetSchema = target.field(field.name()).schema();
-
-            if (filter.contains(fieldFullPath)) {
-                concat.put(fieldFullPath, currentValue);
-            }
 
             newStruct.put(field.name(), copyValuesToNewSchema(concat, fieldFullPath, currentSchema, targetSchema, currentValue));
         }
@@ -165,11 +179,15 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
             }
 
             var initialParentPath = "";
-            var concat = new HashMap<String, Object>();
+            var concat = new HashMap<String, List<Object>>();
 
             var newKeySchema = addFieldToSchema(record.keySchema());
-            var newKeyStruct = requireStruct(copyValuesToNewSchema(concat, initialParentPath, record.keySchema(), newKeySchema, record.key()), "struct");
-            setConcatenationValue(concat, newKeyStruct);
+
+            var newKeyStruct = record.key();
+            if (newKeyStruct != null) {
+                newKeyStruct = copyValuesToNewSchema(concat, initialParentPath, record.keySchema(), newKeySchema, record.key());
+                setConcatenationValue(concat, newKeyStruct);
+            }
 
             return record.newRecord(
                     record.topic(),
@@ -190,11 +208,15 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
             }
 
             var initialParentPath = "";
-            var concat = new HashMap<String, Object>();
+            var concat = new HashMap<String, List<Object>>();
 
             var newValueSchema = addFieldToSchema(record.valueSchema());
-            var newValueStruct = requireStruct(copyValuesToNewSchema(concat, initialParentPath, record.valueSchema(), newValueSchema, record.value()), "struct");
-            setConcatenationValue(concat, newValueStruct);
+
+            var newValueStruct = record.value();
+            if (newValueStruct != null) {
+                newValueStruct = copyValuesToNewSchema(concat, initialParentPath, record.valueSchema(), newValueSchema, record.value());
+                setConcatenationValue(concat, newValueStruct);
+            }
 
             return record.newRecord(
                     record.topic(),
