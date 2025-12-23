@@ -5,6 +5,7 @@ import org.apache.kafka.common.config.AbstractConfig;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -17,6 +18,19 @@ public class ConfigParser {
 
     public static Set<String> parseCommaSeparatedSingleValues(String value) {
         var result = new HashSet<String>();
+        Arrays
+                .asList(value.split(","))
+                .forEach(it -> {
+                    if (!it.isBlank()) {
+                        result.add(it);
+                    }
+                });
+
+        return result;
+    }
+
+    public static LinkedHashSet<String> parseCommaSeparatedSingleValuesPreserveOrder(String value) {
+        var result = new LinkedHashSet<String>();
         Arrays
                 .asList(value.split(","))
                 .forEach(it -> {

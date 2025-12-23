@@ -4,12 +4,12 @@ import com.nryanov.kafka.connect.toolkit.transforms.trie.PrefixTrie;
 
 import java.util.Collection;
 
-public sealed interface FieldFiler {
+public sealed interface FieldFilter {
     boolean enabled();
 
     boolean shouldApply(String field);
 
-    record None() implements FieldFiler {
+    record None() implements FieldFilter {
         @Override
         public boolean enabled() {
             return false;
@@ -21,7 +21,7 @@ public sealed interface FieldFiler {
         }
     }
 
-    record All() implements FieldFiler {
+    record All() implements FieldFilter {
         @Override
         public boolean enabled() {
             return true;
@@ -33,7 +33,7 @@ public sealed interface FieldFiler {
         }
     }
 
-    record Subset(PrefixTrie trie) implements FieldFiler {
+    record Subset(PrefixTrie trie) implements FieldFilter {
         public Subset(Collection<String> fields) {
             this(build(fields));
         }

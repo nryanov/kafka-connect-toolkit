@@ -1,7 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFiler;
+import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFilter;
 import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -39,7 +39,7 @@ public abstract class AbstractCopyFromTo<R extends ConnectRecord<R>> implements 
                     );
 
     private Map<String, String> mappings;
-    private FieldFiler filer;
+    private FieldFilter filter;
     private String suffix;
 
     @Override
@@ -59,12 +59,12 @@ public abstract class AbstractCopyFromTo<R extends ConnectRecord<R>> implements 
 
         if (mappingsRaw != null && !"*".equals(mappingsRaw)) {
             mappings = ConfigParser.parseCommaSeparatedPairs(config, FIELDS);
-            filer = new FieldFiler.Subset(mappings.keySet());
+            filter = new FieldFilter.Subset(mappings.keySet());
         } else if ("*".equals(mappingsRaw)) {
             mappings = new HashMap<>();
-            filer = new FieldFiler.All();
+            filter = new FieldFilter.All();
         } else {
-            filer = new FieldFiler.None();
+            filter = new FieldFilter.None();
         }
         suffix = config.getString(DEFAULT_SUFFIX);
     }
@@ -88,7 +88,7 @@ public abstract class AbstractCopyFromTo<R extends ConnectRecord<R>> implements 
         for (var field : source.fields()) {
             var fieldFullPath = "".equals(parent) ? field.name() : parent + "." + field.name();
 
-            if (filer.shouldApply(fieldFullPath)) {
+            if (filter.shouldApply(fieldFullPath)) {
                 var mappedFieldName = mappings.getOrDefault(fieldFullPath, field.name() + suffix);
                 copiedSchema.field(mappedFieldName, extractSchemaPatch(fieldFullPath, field.schema()));
             }
@@ -123,7 +123,7 @@ public abstract class AbstractCopyFromTo<R extends ConnectRecord<R>> implements 
         for (var field : source.fields()) {
             var fieldFullPath = "".equals(parent) ? field.name() : parent + "." + field.name();
 
-            if (filer.shouldApply(fieldFullPath)) {
+            if (filter.shouldApply(fieldFullPath)) {
                 var mappedFieldName = mappings.getOrDefault(fieldFullPath, field.name() + suffix);
 
                 var currentValue = currentStruct.get(field);

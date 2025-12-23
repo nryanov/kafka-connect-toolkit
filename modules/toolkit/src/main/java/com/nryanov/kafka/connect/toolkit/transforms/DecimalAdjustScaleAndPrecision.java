@@ -1,7 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFiler;
+import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFilter;
 import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
 import com.nryanov.kafka.connect.toolkit.transforms.common.Target;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -133,8 +133,8 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
                             "Behavior for scale value if current scale is negative. By default -- do not change it"
                     );
 
-    private FieldFiler keyFieldFilter;
-    private FieldFiler valueFieldFilter;
+    private FieldFilter keyFieldFilter;
+    private FieldFilter valueFieldFilter;
     private int precision;
     private int scale;
     private PrecisionMode precisionMode;
@@ -162,19 +162,19 @@ public class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> implemen
         var valueFieldsRaw = config.getString(VALUE_FIELDS);
 
         if (keyFieldsRaw == null) {
-            keyFieldFilter = new FieldFiler.None();
+            keyFieldFilter = new FieldFilter.None();
         } else if ("*".equals(keyFieldsRaw)) {
-            keyFieldFilter = new FieldFiler.All();
+            keyFieldFilter = new FieldFilter.All();
         } else {
-            keyFieldFilter = new FieldFiler.Subset(ConfigParser.parseCommaSeparatedSingleValues(keyFieldsRaw));
+            keyFieldFilter = new FieldFilter.Subset(ConfigParser.parseCommaSeparatedSingleValues(keyFieldsRaw));
         }
 
         if (valueFieldsRaw == null) {
-            valueFieldFilter = new FieldFiler.None();
+            valueFieldFilter = new FieldFilter.None();
         } else if ("*".equals(valueFieldsRaw)) {
-            valueFieldFilter = new FieldFiler.All();
+            valueFieldFilter = new FieldFilter.All();
         } else {
-            valueFieldFilter = new FieldFiler.Subset(ConfigParser.parseCommaSeparatedSingleValues(valueFieldsRaw));
+            valueFieldFilter = new FieldFilter.Subset(ConfigParser.parseCommaSeparatedSingleValues(valueFieldsRaw));
         }
 
         precision = config.getInt(PRECISION);

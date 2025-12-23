@@ -1,7 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFiler;
+import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFilter;
 import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
 import com.nryanov.kafka.connect.toolkit.transforms.common.Target;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -46,8 +46,8 @@ public class BytesToString<R extends ConnectRecord<R>> implements Transformation
                             "Charset which should be used to decode string values. Default: UTF-8"
                     );
 
-    private FieldFiler keyFieldFilter;
-    private FieldFiler valueFieldFilter;
+    private FieldFilter keyFieldFilter;
+    private FieldFilter valueFieldFilter;
     private Charset charset;
 
     @Override
@@ -68,19 +68,19 @@ public class BytesToString<R extends ConnectRecord<R>> implements Transformation
         var valueFieldsRaw = config.getString(VALUE_FIELDS);
 
         if (keyFieldsRaw == null) {
-            keyFieldFilter = new FieldFiler.None();
+            keyFieldFilter = new FieldFilter.None();
         } else if ("*".equals(keyFieldsRaw)) {
-            keyFieldFilter = new FieldFiler.All();
+            keyFieldFilter = new FieldFilter.All();
         } else {
-            keyFieldFilter = new FieldFiler.Subset(ConfigParser.parseCommaSeparatedSingleValues(keyFieldsRaw));
+            keyFieldFilter = new FieldFilter.Subset(ConfigParser.parseCommaSeparatedSingleValues(keyFieldsRaw));
         }
 
         if (valueFieldsRaw == null) {
-            valueFieldFilter = new FieldFiler.None();
+            valueFieldFilter = new FieldFilter.None();
         } else if ("*".equals(valueFieldsRaw)) {
-            valueFieldFilter = new FieldFiler.All();
+            valueFieldFilter = new FieldFilter.All();
         } else {
-            valueFieldFilter = new FieldFiler.Subset(ConfigParser.parseCommaSeparatedSingleValues(valueFieldsRaw));
+            valueFieldFilter = new FieldFilter.Subset(ConfigParser.parseCommaSeparatedSingleValues(valueFieldsRaw));
         }
 
         charset = Charset.forName(config.getString(CHARSET));

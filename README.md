@@ -1,6 +1,23 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### ConcatFields
+Concat selected fields in the new single optional string field. Allow to concat nested fields (in arrays, structs). 
+Only leaf fields are supported. If non-leaf field is selected, then it will be considered as NULL.
+
+- transform for key: `com.nryanov.kafka.connect.toolkit.ConcatFields$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.ConcatFields$Value`
+
+```properties
+transforms=concatKeyFields
+transforms.concatKeyFields.type=com.nryanov.kafka.connect.toolkit.ConcatFields$Key
+
+transforms.concatKeyFields.input.fields={comma separated fields}
+transforms.concatKeyFields.input.fields.null-replacement={replacement for null values} # default: ""
+transforms.concatKeyFields.output.field={output field name}
+transforms.concatKeyFields.delimiter={delimiter} # default _
+```
+
 ### SetNull
 Set value or key as null (payload & schema)
 
