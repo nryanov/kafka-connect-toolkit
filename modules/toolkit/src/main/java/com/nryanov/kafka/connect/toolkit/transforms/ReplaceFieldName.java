@@ -10,7 +10,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
 import java.util.List;
 import java.util.Map;
