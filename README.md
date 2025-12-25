@@ -4,8 +4,7 @@
   - [InsertHash](#inserthash)
   - [ConcatFields](#concatfields)
   - [SetNull](#setnull)
-  - [KeyToValue](#keytovalue)
-  - [ValueToKey](#valuetokey)
+  - [CopyFromTo](#copyfromto)
   - [SwapValueAndKey](#swapvalueandkey)
   - [BytesToBase64](#bytestobase64)
   - [BytesToString](#bytestostring)
@@ -83,38 +82,22 @@ transforms.setNullKey.type=com.nryanov.kafka.connect.toolkit.SetNull$Key
 transforms.setNullValue.type=com.nryanov.kafka.connect.toolkit.SetNull$Value
 ```
 
-### KeyToValue
-Copies specified (or all) fields from key part to value. Allows to specify:
+### CopyFromTo
+Copies specified (or all) fields from source part to target part. Allows to specify:
 - All fields `*`
 - Concrete fields including nested in format: `{full_field_path:name}`
 
-In result copied fields will be added to the root value structure (not in the nested ones).
+In result copied fields will be added to the root structure (not in the nested ones).
 If field should be copied (e.g. leaf field of nested struct -> nested struct field should also be copied) but it has no name mapping then `field.name + suffix` will be used. `suffix` can be changed.
 
 ```properties
-transforms=keyToValue
-transforms.keyToValue.type=com.nryanov.kafka.connect.toolkit.KeyToValue
+transforms=keyToValue,valueToKey
+transforms.keyToValue.type=com.nryanov.kafka.connect.toolkit.CopyFrom$KeyToValue
+transforms.keyToValue.fields=field1,field2,nested.inner
+transforms.keyToValue.suffix=_key
 
-transforms.keyToValue.fields={* | field_1:renamed_field_1,nested.field.from.struct:target_name}
-# optional
-transforms.keyToValue.suffix={custom suffix for fields without mapping} # default: _key
-```
-
-### ValueToKey
-Copies specified (or all) fields from value part to key. Allows to specify:
-- All fields `*`
-- Concrete fields including nested in format: `{full_field_path:name}`
-
-In result copied fields will be added to the root key structure (not in the nested ones).
-If field should be copied (e.g. leaf field of nested struct -> nested struct field should also be copied) but it has no name mapping then `field.name + suffix` will be used. `suffix` can be changed.
-
-```properties
-transforms=valueToKey
-transforms.valueToKey.type=com.nryanov.kafka.connect.toolkit.ValueToKey
-
-transforms.valueToKey.fields={* | field_1:renamed_field_1,nested.field.from.struct:target_name}
-# optional
-transforms.valueToKey.suffix={custom suffix for fields without mapping} # default: _key
+transforms.valueToKey.type=com.nryanov.kafka.connect.toolkit.CopyFrom$ValueToKey
+transforms.valueToKey.fields=*
 ```
 
 ### SwapValueAndKey

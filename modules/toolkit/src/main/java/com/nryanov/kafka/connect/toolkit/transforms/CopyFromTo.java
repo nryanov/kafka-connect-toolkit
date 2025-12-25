@@ -9,7 +9,7 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.transforms.Transformation;
+import org.apache.kafka.connect.errors.DataException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class AbstractCopyFromTo<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
     private final static String FIELDS = "fields";
     private final static String DEFAULT_SUFFIX = "suffix";
 
@@ -48,11 +48,6 @@ public abstract class AbstractCopyFromTo<R extends ConnectRecord<R>> implements 
     }
 
     @Override
-    public void close() {
-
-    }
-
-    @Override
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
         var mappingsRaw = config.getString(FIELDS);
@@ -64,7 +59,7 @@ public abstract class AbstractCopyFromTo<R extends ConnectRecord<R>> implements 
             mappings = new HashMap<>();
             filter = new FieldFilter.All();
         } else {
-            filter = new FieldFilter.None();
+            throw new DataException("Empty `fields` parameter");
         }
         suffix = config.getString(DEFAULT_SUFFIX);
     }
@@ -167,5 +162,57 @@ public abstract class AbstractCopyFromTo<R extends ConnectRecord<R>> implements 
         }
 
         return mergedStruct;
+    }
+
+    public static class KeyToValue<R extends ConnectRecord<R>> extends CopyFromTo<R> {
+        @Override
+        public R apply(R record) {
+            if (record == null) {
+                return null;
+            }
+
+            var initialParentPath = "";
+
+            var schemaPatch = extractSchemaPatch(initialParentPath, record.keySchema());
+            var structPatch = copyValuesToNewSchema(initialParentPath, record.keySchema(), schemaPatch, record.key());
+            var mergedValueSchema = mergeSchemas(record.valueSchema(), schemaPatch);
+            var mergedValueStruct = mergeStructs(mergedValueSchema, record.value(), structPatch);
+
+            return record.newRecord(
+                    record.topic(),
+                    record.kafkaPartition(),
+                    record.keySchema(),
+                    record.key(),
+                    mergedValueSchema,
+                    mergedValueStruct,
+                    record.timestamp()
+            );
+        }
+    }
+
+    public static class ValueToKey<R extends ConnectRecord<R>> extends CopyFromTo<R> {
+        @Override
+        public R apply(R record) {
+            if (record == null) {
+                return null;
+            }
+
+            var initialParentPath = "";
+
+            var schemaPatch = extractSchemaPatch(initialParentPath, record.valueSchema());
+            var structPatch = copyValuesToNewSchema(initialParentPath, record.valueSchema(), schemaPatch, record.value());
+            var mergedKeySchema = mergeSchemas(record.keySchema(), schemaPatch);
+            var mergedKeyStruct = mergeStructs(mergedKeySchema, record.key(), structPatch);
+
+            return record.newRecord(
+                    record.topic(),
+                    record.kafkaPartition(),
+                    mergedKeySchema,
+                    mergedKeyStruct,
+                    record.valueSchema(),
+                    record.value(),
+                    record.timestamp()
+            );
+        }
     }
 }
