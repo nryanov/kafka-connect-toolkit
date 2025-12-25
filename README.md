@@ -14,9 +14,8 @@ Input field must be a type of string (or array of strings). Nested fields are al
 
 ```properties
 transforms=stringToHash
-transforms.insertHash.type=com.nryanov.kafka.connect.toolkit.StringToHash$Key
-
-transforms.insertHash.fields=field:md5,array.nested_field:sha1,struct.nested_level.nested_field:sha256
+transforms.stringToHash.type=com.nryanov.kafka.connect.toolkit.StringToHash$Key
+transforms.stringToHash.fields=field:md5,array.nested_field:sha1,struct.nested_level.nested_field:sha256
 ```
 
 ### InsertHash

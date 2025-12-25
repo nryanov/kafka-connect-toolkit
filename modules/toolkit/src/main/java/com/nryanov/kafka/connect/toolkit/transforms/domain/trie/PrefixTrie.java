@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.transforms.trie;
+package com.nryanov.kafka.connect.toolkit.transforms.domain.trie;
 
 import java.util.Collection;
 import java.util.HashMap;

@@ -1,8 +1,8 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.Target;
-import com.nryanov.kafka.connect.toolkit.transforms.masking.CardMaskingConfig;
-import com.nryanov.kafka.connect.toolkit.transforms.masking.CardMaskingService;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.model.Target;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.masking.CardMaskingConfig;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.masking.CardMaskingService;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;

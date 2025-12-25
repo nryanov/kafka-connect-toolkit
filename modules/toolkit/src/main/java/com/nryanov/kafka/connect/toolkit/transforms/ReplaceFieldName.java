@@ -1,7 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
-import com.nryanov.kafka.connect.toolkit.transforms.trie.PrefixTrie;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.trie.PrefixTrie;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -15,8 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser.parseCommaSeparatedPairs;
-import static com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser.parseCommaSeparatedSingleValues;
+import static com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser.parseCommaSeparatedPairs;
+import static com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser.parseCommaSeparatedSingleValues;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformation<R> {

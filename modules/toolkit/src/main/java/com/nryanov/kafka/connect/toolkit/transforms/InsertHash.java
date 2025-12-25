@@ -1,8 +1,8 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
-import com.nryanov.kafka.connect.toolkit.transforms.hash.HashAlgorithm;
-import com.nryanov.kafka.connect.toolkit.transforms.hash.Hex;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.HashAlgorithm;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.Hex;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;

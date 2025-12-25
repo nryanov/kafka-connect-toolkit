@@ -1,0 +1,29 @@
+package com.nryanov.kafka.connect.toolkit.transforms;
+
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.transforms.Transformation;
+
+import java.util.Map;
+
+public abstract class AbstractBaseTransform<R extends ConnectRecord<R>> implements Transformation<R> {
+    @Override
+    public R apply(R record) {
+        return null;
+    }
+
+    @Override
+    public ConfigDef config() {
+        return null;
+    }
+
+    @Override
+    public void close() {
+
+    }
+
+    @Override
+    public void configure(Map<String, ?> configs) {
+
+    }
+}

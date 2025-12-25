@@ -1,8 +1,8 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFilter;
-import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.model.FieldFilter;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;

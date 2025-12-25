@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.transforms.masking;
+package com.nryanov.kafka.connect.toolkit.transforms.domain.masking;
 
 import java.util.ArrayList;
 import java.util.List;
