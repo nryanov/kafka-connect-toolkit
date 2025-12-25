@@ -1,62 +1,30 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
-import org.apache.kafka.connect.transforms.Transformation;
+import org.apache.kafka.connect.data.Schema;
 
-import java.util.Map;
-
-public abstract class SetNull<R extends ConnectRecord<R>> implements Transformation<R> {
-    @Override
-    public ConfigDef config() {
-        return new ConfigDef();
-    }
-
-    @Override
-    public void close() {
-
-    }
-
-    @Override
-    public void configure(Map<String, ?> configs) {
-
-    }
-
+public abstract class SetNull<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
     public static class Key<R extends ConnectRecord<R>> extends SetNull<R> {
         @Override
-        public R apply(R record) {
-            if (record == null) {
-                return null;
-            }
+        protected Schema keySchema(R record) {
+            return null;
+        }
 
-            return record.newRecord(
-                    record.topic(),
-                    record.kafkaPartition(),
-                    null,
-                    null,
-                    record.valueSchema(),
-                    record.value(),
-                    record.timestamp()
-            );
+        @Override
+        protected Object key(R record, Schema updatedSchema) {
+            return null;
         }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends SetNull<R> {
         @Override
-        public R apply(R record) {
-            if (record == null) {
-                return null;
-            }
+        protected Object value(R record, Schema updatedSchema) {
+            return null;
+        }
 
-            return record.newRecord(
-                    record.topic(),
-                    record.kafkaPartition(),
-                    record.keySchema(),
-                    record.key(),
-                    null,
-                    null,
-                    record.timestamp()
-            );
+        @Override
+        protected Schema valueSchema(R record) {
+            return null;
         }
     }
 }
