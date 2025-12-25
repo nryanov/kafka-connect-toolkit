@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class BytesToStringTest {
@@ -18,56 +19,21 @@ public class BytesToStringTest {
     }
 
     @Test
-    public void decodeBytesToString() {
-        var transform = new BytesToString<SinkRecord>();
+    public void correctlyHandleNull() {
+        var transform = new BytesToString.Key<SinkRecord>();
         transform.configure(Map.of(
-                "key.fields", "field_1",
-                "value.fields", "field_2"
+                "fields", "field_1"
         ));
 
-        var schema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.BYTES_SCHEMA)
-                .field("field_2", Schema.BYTES_SCHEMA)
-                .build();
-
-        var keyStruct = new Struct(schema).put("field_1", string2bytes("field_1_value")).put("field_2", string2bytes("field_2_value"));
-        var valueStruct = new Struct(schema).put("field_1", string2bytes("field_1_value")).put("field_2", string2bytes("field_2_value"));
-
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
-
-        var result = transform.apply(record);
-
-        var resultKeyStruct = requireStruct(result.key(), "test");
-        var resultValueStruct = requireStruct(result.value(), "test");
-
-        var expectedKeySchema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.STRING_SCHEMA)
-                .field("field_2", Schema.BYTES_SCHEMA)
-                .build();
-        var expectedValueSchema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.BYTES_SCHEMA)
-                .field("field_2", Schema.STRING_SCHEMA)
-                .build();
-
-        var expectedKeyStruct = new Struct(expectedKeySchema).put("field_1", "field_1_value").put("field_2", string2bytes("field_2_value"));
-        var expectedValueStruct = new Struct(expectedValueSchema).put("field_1", string2bytes("field_1_value")).put("field_2", "field_2_value");
-
-        assertEquals(expectedKeySchema, result.keySchema());
-        assertEquals(expectedValueSchema, result.valueSchema());
-
-        assertEquals(expectedKeyStruct, resultKeyStruct);
-        assertEquals(expectedValueStruct, resultValueStruct);
+        var record = new SinkRecord("topic", 1, null, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
     }
 
     @Test
-    public void decodeBytesToStringInAllFields() {
-        var transform = new BytesToString<SinkRecord>();
+    public void decodeBytesToStringInKey() {
+        var transform = new BytesToString.Key<SinkRecord>();
         transform.configure(Map.of(
-                "key.fields", "*",
-                "value.fields", "*"
+                "fields", "field_1"
         ));
 
         var schema = SchemaBuilder
@@ -76,43 +42,93 @@ public class BytesToStringTest {
                 .field("field_2", Schema.BYTES_SCHEMA)
                 .build();
 
-        var keyStruct = new Struct(schema).put("field_1", string2bytes("field_1_value")).put("field_2", string2bytes("field_2_value"));
-        var valueStruct = new Struct(schema).put("field_1", string2bytes("field_1_value")).put("field_2", string2bytes("field_2_value"));
+        var struct = new Struct(schema).put("field_1", string2bytes("field_1_value")).put("field_2", string2bytes("field_2_value"));
 
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+        var record = new SinkRecord("topic", 1, struct.schema(), struct, null, null, 0L);
 
         var result = transform.apply(record);
+        var resultStruct = requireStruct(result.key(), "test");
 
-        var resultKeyStruct = requireStruct(result.key(), "test");
-        var resultValueStruct = requireStruct(result.value(), "test");
+        var expectedSchema = SchemaBuilder
+                .struct()
+                .field("field_1", Schema.STRING_SCHEMA)
+                .field("field_2", Schema.BYTES_SCHEMA)
+                .build();
 
-        var expectedKeySchema = SchemaBuilder
+        var expectedStruct = new Struct(expectedSchema).put("field_1", "field_1_value").put("field_2", string2bytes("field_2_value"));
+
+        assertEquals(expectedSchema, resultStruct.schema());
+        assertEquals(expectedStruct, resultStruct);
+    }
+
+    @Test
+    public void decodeBytesToStringInValue() {
+        var transform = new BytesToString.Value<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "field_1"
+        ));
+
+        var schema = SchemaBuilder
+                .struct()
+                .field("field_1", Schema.BYTES_SCHEMA)
+                .field("field_2", Schema.BYTES_SCHEMA)
+                .build();
+
+        var struct = new Struct(schema).put("field_1", string2bytes("field_1_value")).put("field_2", string2bytes("field_2_value"));
+
+        var record = new SinkRecord("topic", 1, null, null, struct.schema(), struct, 0L);
+
+        var result = transform.apply(record);
+        var resultStruct = requireStruct(result.value(), "test");
+
+        var expectedSchema = SchemaBuilder
+                .struct()
+                .field("field_1", Schema.STRING_SCHEMA)
+                .field("field_2", Schema.BYTES_SCHEMA)
+                .build();
+
+        var expectedStruct = new Struct(expectedSchema).put("field_1", "field_1_value").put("field_2", string2bytes("field_2_value"));
+
+        assertEquals(expectedSchema, resultStruct.schema());
+        assertEquals(expectedStruct, resultStruct);
+    }
+
+    @Test
+    public void decodeBytesToStringInAllFieldsInKey() {
+        var transform = new BytesToString.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "*"
+        ));
+
+        var schema = SchemaBuilder
+                .struct()
+                .field("field_1", Schema.BYTES_SCHEMA)
+                .field("field_2", Schema.BYTES_SCHEMA)
+                .build();
+
+        var struct = new Struct(schema).put("field_1", string2bytes("field_1_value")).put("field_2", string2bytes("field_2_value"));
+
+        var record = new SinkRecord("topic", 1, struct.schema(), struct, null, null, 0L);
+        var result = transform.apply(record);
+        var resultStruct = requireStruct(result.key(), "test");
+
+        var expectedSchema = SchemaBuilder
                 .struct()
                 .field("field_1", Schema.STRING_SCHEMA)
                 .field("field_2", Schema.STRING_SCHEMA)
                 .build();
-        var expectedValueSchema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.STRING_SCHEMA)
-                .field("field_2", Schema.STRING_SCHEMA)
-                .build();
 
-        var expectedKeyStruct = new Struct(expectedKeySchema).put("field_1", "field_1_value").put("field_2", "field_2_value");
-        var expectedValueStruct = new Struct(expectedValueSchema).put("field_1", "field_1_value").put("field_2", "field_2_value");
+        var expectedStruct = new Struct(expectedSchema).put("field_1", "field_1_value").put("field_2", "field_2_value");
 
-        assertEquals(expectedKeySchema, result.keySchema());
-        assertEquals(expectedValueSchema, result.valueSchema());
-
-        assertEquals(expectedKeyStruct, resultKeyStruct);
-        assertEquals(expectedValueStruct, resultValueStruct);
+        assertEquals(expectedSchema, resultStruct.schema());
+        assertEquals(expectedStruct, resultStruct);
     }
 
     @Test
     public void decodeBytesToStringInNestedFields() {
-        var transform = new BytesToString<SinkRecord>();
+        var transform = new BytesToString.Key<SinkRecord>();
         transform.configure(Map.of(
-                "key.fields", "nested.nested_field_1",
-                "value.fields", "nested.nested_level_2"
+                "fields", "nested.nested_field_1"
         ));
 
         var schema = SchemaBuilder
@@ -137,20 +153,7 @@ public class BytesToStringTest {
                 )
                 .build();
 
-        var keyStruct = new Struct(schema)
-                .put("field_1", string2bytes("field_1_value"))
-                .put(
-                        "nested",
-                        new Struct(schema.field("nested").schema())
-                                .put("nested_field_1", string2bytes("nested_field_1_value"))
-                                .put(
-                                        "nested_level_2",
-                                        new Struct(schema.field("nested").schema().field("nested_level_2").schema())
-                                                .put("nested_level_2_field_1", string2bytes("nested_level_2_field_1_value"))
-                                                .put("nested_level_2_field_2", string2bytes("nested_level_2_field_2_value"))
-                                )
-                );
-        var valueStruct = new Struct(schema)
+        var struct = new Struct(schema)
                 .put("field_1", string2bytes("field_1_value"))
                 .put(
                         "nested",
@@ -164,14 +167,11 @@ public class BytesToStringTest {
                                 )
                 );
 
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
-
+        var record = new SinkRecord("topic", 1, struct.schema(), struct, null, null, 0L);
         var result = transform.apply(record);
+        var resultStruct = requireStruct(result.key(), "test");
 
-        var resultKeyStruct = requireStruct(result.key(), "test");
-        var resultValueStruct = requireStruct(result.value(), "test");
-
-        var expectedKeySchema = SchemaBuilder
+        var expectedSchema = SchemaBuilder
                 .struct()
                 .field("field_1", Schema.BYTES_SCHEMA)
                 .field(
@@ -193,59 +193,21 @@ public class BytesToStringTest {
                 )
                 .build();
 
-        var expectedValueSchema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.BYTES_SCHEMA)
-                .field(
-                        "nested",
-                        SchemaBuilder
-                                .struct()
-                                .field("nested_field_1", Schema.BYTES_SCHEMA)
-                                .field(
-                                        "nested_level_2",
-                                        SchemaBuilder
-                                                .struct()
-                                                .field("nested_level_2_field_1", Schema.STRING_SCHEMA)
-                                                .field("nested_level_2_field_2", Schema.STRING_SCHEMA)
-                                                .optional()
-                                                .build()
-                                )
-                                .optional()
-                                .build()
-                )
-                .build();
-
-        var expectedKeyStruct = new Struct(expectedKeySchema)
+        var expectedStruct = new Struct(expectedSchema)
                 .put("field_1", string2bytes("field_1_value"))
                 .put(
                         "nested",
-                        new Struct(expectedKeySchema.field("nested").schema())
+                        new Struct(expectedSchema.field("nested").schema())
                                 .put("nested_field_1", "nested_field_1_value")
                                 .put(
                                         "nested_level_2",
-                                        new Struct(expectedKeySchema.field("nested").schema().field("nested_level_2").schema())
+                                        new Struct(expectedSchema.field("nested").schema().field("nested_level_2").schema())
                                                 .put("nested_level_2_field_1", string2bytes("nested_level_2_field_1_value"))
                                                 .put("nested_level_2_field_2", string2bytes("nested_level_2_field_2_value"))
                                 )
                 );
-        var expectedValueStruct = new Struct(expectedValueSchema)
-                .put("field_1", string2bytes("field_1_value"))
-                .put(
-                        "nested",
-                        new Struct(expectedValueSchema.field("nested").schema())
-                                .put("nested_field_1", string2bytes("nested_field_1_value"))
-                                .put(
-                                        "nested_level_2",
-                                        new Struct(expectedValueSchema.field("nested").schema().field("nested_level_2").schema())
-                                                .put("nested_level_2_field_1", "nested_level_2_field_1_value")
-                                                .put("nested_level_2_field_2", "nested_level_2_field_2_value")
-                                )
-                );
 
-        assertEquals(expectedKeySchema, result.keySchema());
-        assertEquals(expectedValueSchema, result.valueSchema());
-
-        assertEquals(expectedKeyStruct, resultKeyStruct);
-        assertEquals(expectedValueStruct, resultValueStruct);
+        assertEquals(expectedSchema, resultStruct.schema());
+        assertEquals(expectedStruct, resultStruct);
     }
 }

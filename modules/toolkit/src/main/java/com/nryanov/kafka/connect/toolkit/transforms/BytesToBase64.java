@@ -1,16 +1,15 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.common.FieldFilter;
-import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
-import com.nryanov.kafka.connect.toolkit.transforms.common.Target;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.model.FieldFilter;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.transforms.Transformation;
+import org.apache.kafka.connect.errors.DataException;
 
 import java.util.Base64;
 import java.util.List;
@@ -18,29 +17,20 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public class BytesToBase64<R extends ConnectRecord<R>> implements Transformation<R> {
-    private final static String KEY_FIELDS = "key.fields";
-    private final static String VALUE_FIELDS = "value.fields";
+public abstract class BytesToBase64<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+    private final static String FIELDS = "fields";
 
     private final static ConfigDef CONFIG_DEF =
             new ConfigDef()
                     .define(
-                            KEY_FIELDS,
+                            FIELDS,
                             ConfigDef.Type.STRING,
                             null,
                             ConfigDef.Importance.MEDIUM,
-                            "List of fields in key-part which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
-                    )
-                    .define(
-                            VALUE_FIELDS,
-                            ConfigDef.Type.STRING,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            "List of fields in key-part which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
+                            "List of fields which should be modified. Allowed values: NULL (no fields will be modified), * (all fields), concrete list of fields"
                     );
 
-    private FieldFilter keyFieldFilter;
-    private FieldFilter valueFieldFilter;
+    private FieldFilter fieldsFilter;
 
     @Override
     public ConfigDef config() {
@@ -48,104 +38,50 @@ public class BytesToBase64<R extends ConnectRecord<R>> implements Transformation
     }
 
     @Override
-    public void close() {
-
-    }
-
-    @Override
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
-        var keyFieldsRaw = config.getString(KEY_FIELDS);
-        var valueFieldsRaw = config.getString(VALUE_FIELDS);
+        var fieldsRaw = config.getString(FIELDS);
 
-        if (keyFieldsRaw == null) {
-            keyFieldFilter = new FieldFilter.None();
-        } else if ("*".equals(keyFieldsRaw)) {
-            keyFieldFilter = new FieldFilter.All();
+        if (fieldsRaw == null) {
+            throw new DataException("Empty `fields` parameter");
+        } else if ("*".equals(fieldsRaw)) {
+            fieldsFilter = new FieldFilter.All();
         } else {
-            keyFieldFilter = new FieldFilter.Subset(ConfigParser.parseCommaSeparatedSingleValues(keyFieldsRaw));
-        }
-
-        if (valueFieldsRaw == null) {
-            valueFieldFilter = new FieldFilter.None();
-        } else if ("*".equals(valueFieldsRaw)) {
-            valueFieldFilter = new FieldFilter.All();
-        } else {
-            valueFieldFilter = new FieldFilter.Subset(ConfigParser.parseCommaSeparatedSingleValues(valueFieldsRaw));
+            fieldsFilter = new FieldFilter.Subset(ConfigParser.parseCommaSeparatedSingleValues(fieldsRaw));
         }
     }
 
-    @Override
-    public R apply(R record) {
-        if (record == null) {
-            return null;
-        }
-
-        var initialParentPath = "";
-
-        var mappedKeySchema = record.keySchema();
-        var mappedKey = record.key();
-
-        if (keyFieldFilter.enabled()) {
-            mappedKeySchema = applyMappingToSchema(Target.KEY, initialParentPath, record.keySchema());
-            mappedKey = copyValuesToNewSchema(Target.KEY, initialParentPath, record.keySchema(), mappedKeySchema, record.key());
-        }
-
-        var mappedValue = record.value();
-        var mappedValueSchema = record.valueSchema();
-
-        if (valueFieldFilter.enabled()) {
-            mappedValueSchema = applyMappingToSchema(Target.VALUE, initialParentPath, record.valueSchema());
-            mappedValue = copyValuesToNewSchema(Target.VALUE, initialParentPath, record.valueSchema(), mappedValueSchema, record.value());
-        }
-
-        return record.newRecord(
-                record.topic(),
-                record.kafkaPartition(),
-                mappedKeySchema,
-                mappedKey,
-                mappedValueSchema,
-                mappedValue,
-                record.timestamp()
-        );
-    }
-
-
-    private Schema applyMappingToSchema(Target targetType, String parent, Schema source) {
+    protected Schema applyMappingToSchema(String parent, Schema source) {
         if (source == null) {
             return null;
         }
 
         return switch (source.type()) {
             case ARRAY -> {
-                var mappedSchema = applyMappingToSchema(targetType, parent, source.valueSchema());
+                var mappedSchema = applyMappingToSchema(parent, source.valueSchema());
                 var arrayBuilder = SchemaBuilder.array(mappedSchema).name(source.name());
                 yield SchemaCopyUtil.copySchemaBasics(source, arrayBuilder).build();
             }
-            case STRUCT -> applyMappingsToStruct(targetType, parent, source);
-            case BYTES -> convertBytesToStringSchema(targetType, parent, source);
+            case STRUCT -> applyMappingsToStruct(parent, source);
+            case BYTES -> convertBytesToStringSchema(parent, source);
             case null, default -> source;
         };
     }
 
-    private Schema applyMappingsToStruct(Target targetType, String parent, Schema struct) {
+    private Schema applyMappingsToStruct(String parent, Schema struct) {
         var copiedSchema = SchemaCopyUtil.copySchemaBasics(struct);
 
         for (var field : struct.fields()) {
             var nextField = "".equals(parent) ? field.name() : parent + "." + field.name();
-            copiedSchema.field(field.name(), applyMappingToSchema(targetType, nextField, field.schema()));
+            copiedSchema.field(field.name(), applyMappingToSchema(nextField, field.schema()));
         }
 
         return copiedSchema.build();
     }
 
-    private Schema convertBytesToStringSchema(Target targetType, String parent, Schema input) {
-        var shouldCopy = switch (targetType) {
-            case VALUE -> valueFieldFilter.shouldApply(parent);
-            case KEY -> keyFieldFilter.shouldApply(parent);
-        };
-
+    private Schema convertBytesToStringSchema(String parent, Schema input) {
+        var shouldCopy = fieldsFilter.shouldApply(parent);
         if (!shouldCopy) {
             return input;
         }
@@ -154,27 +90,27 @@ public class BytesToBase64<R extends ConnectRecord<R>> implements Transformation
         return SchemaCopyUtil.copySchemaBasics(input, newSchema).build();
     }
 
-    private Object copyValuesToNewSchema(Target targetType, String parent, Schema source, Schema target, Object input) {
+    protected Object copyValuesToNewSchema(String parent, Schema source, Schema target, Object input) {
         if (input == null) {
             return null;
         }
 
         return switch (source.type()) {
-            case ARRAY -> copyArray(targetType, parent, source.valueSchema(), target.valueSchema(), input);
-            case STRUCT -> copyStruct(targetType, parent, source, target, input);
-            case BYTES -> convertBytesToBase64String(targetType, parent, input);
+            case ARRAY -> copyArray(parent, source.valueSchema(), target.valueSchema(), input);
+            case STRUCT -> copyStruct(parent, source, target, input);
+            case BYTES -> convertBytesToBase64String(parent, input);
             case null, default -> input;
         };
     }
 
     @SuppressWarnings("unchecked")
-    private List<Object> copyArray(Target targetType, String parent, Schema source, Schema target, Object input) {
+    private List<Object> copyArray(String parent, Schema source, Schema target, Object input) {
         var inputObjects = (List<Object>) input;
 
-        return inputObjects.stream().map(it -> copyValuesToNewSchema(targetType, parent, source, target, it)).toList();
+        return inputObjects.stream().map(it -> copyValuesToNewSchema(parent, source, target, it)).toList();
     }
 
-    private Struct copyStruct(Target targetType, String parent, Schema source, Schema target, Object input) {
+    private Struct copyStruct(String parent, Schema source, Schema target, Object input) {
         var currentStruct = requireStruct(input, "struct required");
         var newStruct = new Struct(target);
 
@@ -184,18 +120,14 @@ public class BytesToBase64<R extends ConnectRecord<R>> implements Transformation
             var targetSchema = target.field(field.name()).schema();
 
             var nextField = "".equals(parent) ? field.name() : parent + "." + field.name();
-            newStruct.put(field.name(), copyValuesToNewSchema(targetType, nextField, currentSchema, targetSchema, currentValue));
+            newStruct.put(field.name(), copyValuesToNewSchema(nextField, currentSchema, targetSchema, currentValue));
         }
 
         return newStruct;
     }
 
-    private Object convertBytesToBase64String(Target targetType, String parent, Object input) {
-        var shouldCopy = switch (targetType) {
-            case VALUE -> valueFieldFilter.shouldApply(parent);
-            case KEY -> keyFieldFilter.shouldApply(parent);
-        };
-
+    private Object convertBytesToBase64String(String parent, Object input) {
+        var shouldCopy = fieldsFilter.shouldApply(parent);
         if (!shouldCopy) {
             return input;
         }
@@ -203,5 +135,29 @@ public class BytesToBase64<R extends ConnectRecord<R>> implements Transformation
         var bytes = (byte[]) input;
         var encoder = Base64.getEncoder();
         return encoder.encodeToString(bytes);
+    }
+
+    public static class Key<R extends ConnectRecord<R>> extends BytesToBase64<R> {
+        @Override
+        protected Object key(R record, Schema updatedSchema) {
+            return copyValuesToNewSchema("", record.keySchema(), updatedSchema, record.key());
+        }
+
+        @Override
+        protected Schema keySchema(R record) {
+            return applyMappingToSchema("", record.keySchema());
+        }
+    }
+
+    public static class Value<R extends ConnectRecord<R>> extends BytesToBase64<R> {
+        @Override
+        protected Schema valueSchema(R record) {
+            return applyMappingToSchema("", record.valueSchema());
+        }
+
+        @Override
+        protected Object value(R record, Schema updatedSchema) {
+            return copyValuesToNewSchema("", record.valueSchema(), updatedSchema, record.value());
+        }
     }
 }

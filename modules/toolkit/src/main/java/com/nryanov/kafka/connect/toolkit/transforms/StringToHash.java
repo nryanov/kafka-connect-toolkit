@@ -1,15 +1,14 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.hash.HashAlgorithm;
-import com.nryanov.kafka.connect.toolkit.transforms.hash.Hex;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.HashAlgorithm;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.Hex;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.transforms.Transformation;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -20,7 +19,7 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class StringToHash<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class StringToHash<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
     private final static String FIELDS = "fields";
 
     private final static ConfigDef CONFIG_DEF =
@@ -38,44 +37,6 @@ public abstract class StringToHash<R extends ConnectRecord<R>> implements Transf
     @Override
     public ConfigDef config() {
         return CONFIG_DEF;
-    }
-
-    @Override
-    public void close() {
-
-    }
-
-    @Override
-    public R apply(R record) {
-        if (record == null) {
-            return null;
-        }
-
-        return record.newRecord(
-                record.topic(),
-                record.kafkaPartition(),
-                keySchema(record),
-                key(record),
-                valueSchema(record),
-                value(record),
-                record.timestamp()
-        );
-    }
-
-    protected Schema keySchema(R record) {
-        return record.keySchema();
-    }
-
-    protected Schema valueSchema(R record) {
-        return record.valueSchema();
-    }
-
-    protected Object key(R record) {
-        return record.key();
-    }
-
-    protected Object value(R record) {
-        return record.value();
     }
 
     @Override
@@ -149,17 +110,15 @@ public abstract class StringToHash<R extends ConnectRecord<R>> implements Transf
 
     public static class Key<R extends ConnectRecord<R>> extends StringToHash<R> {
         @Override
-        protected Object key(R record) {
-            var initialParentPath = "";
-            return copyPayload(initialParentPath, record.keySchema(), record.key());
+        protected Object key(R record, Schema updatedSchema) {
+            return copyPayload("", record.keySchema(), record.key());
         }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends StringToHash<R> {
         @Override
-        protected Object value(R record) {
-            var initialParentPath = "";
-            return copyPayload(initialParentPath, record.valueSchema(), record.value());
+        protected Object value(R record, Schema updatedSchema) {
+            return copyPayload("", record.valueSchema(), record.value());
         }
     }
 }

@@ -1,8 +1,8 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
-import com.nryanov.kafka.connect.toolkit.transforms.hash.HashAlgorithm;
-import com.nryanov.kafka.connect.toolkit.transforms.hash.Hex;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.HashAlgorithm;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.Hex;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -10,7 +10,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.transforms.Transformation;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -21,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class InsertHash<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
     private final static String INPUT_FIELD = "input.field";
     private final static String HASH_ALGORITHM = "algorithm";
     private final static String OUTPUT_FIELD = "output.field";
@@ -57,11 +56,6 @@ public abstract class InsertHash<R extends ConnectRecord<R>> implements Transfor
     @Override
     public ConfigDef config() {
         return CONFIG_DEF;
-    }
-
-    @Override
-    public void close() {
-
     }
 
     @Override
@@ -148,60 +142,41 @@ public abstract class InsertHash<R extends ConnectRecord<R>> implements Transfor
 
     public static class Key<R extends ConnectRecord<R>> extends InsertHash<R> {
         @Override
-        public R apply(R record) {
-            if (record == null) {
-                return null;
-            }
-
-            var initialParentPath = "";
+        protected Object key(R record, Schema updatedSchema) {
             var hash = new AtomicReference<String>();
-
-            var newKeySchema = addFieldToSchema(record.keySchema());
-
             var newKeyStruct = record.key();
+
             if (newKeyStruct != null) {
-                newKeyStruct = copyValuesToNewSchema(hash, initialParentPath, record.keySchema(), newKeySchema, record.key());
+                newKeyStruct = copyValuesToNewSchema(hash, "", record.keySchema(), updatedSchema, record.key());
                 setHashValue(hash, newKeyStruct);
             }
 
-            return record.newRecord(
-                    record.topic(),
-                    record.kafkaPartition(),
-                    newKeySchema,
-                    newKeyStruct,
-                    record.valueSchema(),
-                    record.value(),
-                    record.timestamp()
-            );
+            return newKeyStruct;
+        }
+
+        @Override
+        protected Schema keySchema(R record) {
+            return addFieldToSchema(record.keySchema());
         }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends InsertHash<R> {
-        public R apply(R record) {
-            if (record == null) {
-                return null;
-            }
+        @Override
+        protected Schema valueSchema(R record) {
+            return addFieldToSchema(record.valueSchema());
+        }
 
-            var initialParentPath = "";
+        @Override
+        protected Object value(R record, Schema updatedSchema) {
             var hash = new AtomicReference<String>();
-
-            var newValueSchema = addFieldToSchema(record.valueSchema());
 
             var newValueStruct = record.value();
             if (newValueStruct != null) {
-                newValueStruct = copyValuesToNewSchema(hash, initialParentPath, record.valueSchema(), newValueSchema, record.value());
+                newValueStruct = copyValuesToNewSchema(hash, "", record.valueSchema(), updatedSchema, record.value());
                 setHashValue(hash, newValueStruct);
             }
 
-            return record.newRecord(
-                    record.topic(),
-                    record.kafkaPartition(),
-                    record.keySchema(),
-                    record.key(),
-                    newValueSchema,
-                    newValueStruct,
-                    record.timestamp()
-            );
+            return newValueStruct;
         }
     }
 }

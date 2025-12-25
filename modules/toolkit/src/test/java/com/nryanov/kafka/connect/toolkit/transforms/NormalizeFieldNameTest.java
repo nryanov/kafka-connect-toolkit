@@ -10,24 +10,48 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class NormalizeFieldNameTest {
     @Test
-    public void transformNamesToUpperCase() {
-        var transform = new NormalizeFieldName<SinkRecord>();
+    public void correctlyHandleNullPayload() {
+        var transform = new NormalizeFieldName.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "case.initial", "LOWER_UNDERSCORE",
+                "case.target", "LOWER_CAMEL"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
+    @Test
+    public void transformNamesToUpperCaseInKey() {
+        var transform = new NormalizeFieldName.Key<SinkRecord>();
         transform.configure(Map.of(
                 "case.initial", "LOWER_UNDERSCORE",
                 "case.target", "LOWER_CAMEL"
         ));
 
         var keyStruct = DefaultRecords.createNestedKeyStruct();
-        var valueStruct = DefaultRecords.createNestedValueStruct();
-
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, null, null, 0L);
 
         var result = transform.apply(record);
-
         var expectedKeySchema = DefaultRecords.createNestedKeySchemaLowerCamelFieldNames();
-        var expectedValueSchema = DefaultRecords.createNestedValueSchemaLowerCamelFieldNames();
 
         assertEquals(expectedKeySchema, result.keySchema());
+    }
+
+    @Test
+    public void transformNamesToUpperCaseInValue() {
+        var transform = new NormalizeFieldName.Value<SinkRecord>();
+        transform.configure(Map.of(
+                "case.initial", "LOWER_UNDERSCORE",
+                "case.target", "LOWER_CAMEL"
+        ));
+
+        var valueStruct = DefaultRecords.createNestedValueStruct();
+        var record = new SinkRecord("topic", 1, null, null, valueStruct.schema(), valueStruct, 0L);
+
+        var result = transform.apply(record);
+        var expectedValueSchema = DefaultRecords.createNestedValueSchemaLowerCamelFieldNames();
+
         assertEquals(expectedValueSchema, result.valueSchema());
     }
 }

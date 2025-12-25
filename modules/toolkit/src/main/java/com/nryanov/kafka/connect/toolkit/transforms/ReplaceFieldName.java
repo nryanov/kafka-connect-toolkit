@@ -1,7 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
-import com.nryanov.kafka.connect.toolkit.transforms.trie.PrefixTrie;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.trie.PrefixTrie;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -9,63 +9,40 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.transforms.Transformation;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser.parseCommaSeparatedPairs;
-import static com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser.parseCommaSeparatedSingleValues;
+import static com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser.parseCommaSeparatedPairs;
+import static com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser.parseCommaSeparatedSingleValues;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformation<R> {
-    private final static String KEY_EXCLUDE = "key.exclude";
-    private final static String KEY_REPLACE = "key.replace";
-    private final static String KEY_INCLUDE = "key.include";
-    private final static String VALUE_EXCLUDE = "value.exclude";
-    private final static String VALUE_REPLACE = "value.replace";
-    private final static String VALUE_INCLUDE = "value.include";
+public abstract class ReplaceFieldName<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+    private final static String EXCLUDE = "exclude";
+    private final static String REPLACE = "replace";
+    private final static String INCLUDE = "include";
     private final static ConfigDef CONFIG_DEF =
             new ConfigDef()
                     .define(
-                            KEY_EXCLUDE,
+                            EXCLUDE,
                             ConfigDef.Type.STRING,
                             null,
                             ConfigDef.Importance.MEDIUM,
-                            "Fields to exclude from the resulting Struct or Map. This takes precedence over the include list."
+                            "Fields to exclude from the resulting struct. This takes precedence over the include list."
                     )
                     .define(
-                            KEY_REPLACE,
+                            REPLACE,
                             ConfigDef.Type.STRING,
                             null,
                             ConfigDef.Importance.MEDIUM,
                             "Field rename mappings"
                     ).define(
-                            KEY_INCLUDE,
+                            INCLUDE,
                             ConfigDef.Type.STRING,
                             null,
                             ConfigDef.Importance.MEDIUM,
-                            "Fields to include. If specified, only the named fields will be included in the resulting Struct or Map."
-                    ).define(
-                            VALUE_EXCLUDE,
-                            ConfigDef.Type.STRING,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            "Fields to exclude from the resulting Struct or Map. This takes precedence over the include list."
-                    )
-                    .define(
-                            VALUE_REPLACE,
-                            ConfigDef.Type.STRING,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            "Field rename mappings"
-                    ).define(
-                            VALUE_INCLUDE,
-                            ConfigDef.Type.STRING,
-                            null,
-                            ConfigDef.Importance.MEDIUM,
-                            "Fields to include. If specified, only the named fields will be included in the resulting Struct or Map."
+                            "Fields to include. If specified, only the named fields will be included in the resulting struct."
                     );
 
     private record Triplet(
@@ -91,8 +68,7 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
         }
     }
 
-    private Triplet keyTriplet;
-    private Triplet valueTriplet;
+    private Triplet triplet;
 
     @Override
     public ConfigDef config() {
@@ -100,71 +76,34 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
     }
 
     @Override
-    public void close() {
-
-    }
-
-    @Override
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
-        var keyExcludeFields = parseCommaSeparatedSingleValues(config, KEY_EXCLUDE);
-        var valueExcludeFields = parseCommaSeparatedSingleValues(config, VALUE_EXCLUDE);
-
-        var keyReplaceFields = parseCommaSeparatedPairs(config, KEY_REPLACE);
-        var valueReplaceFields = parseCommaSeparatedPairs(config, VALUE_REPLACE);
-
-        var keyIncludeFields = parseCommaSeparatedSingleValues(config, KEY_INCLUDE);
-        var valueIncludeFields = parseCommaSeparatedSingleValues(config, VALUE_INCLUDE);
-
-        var keyIncludePrefixTrie = new PrefixTrie();
-        keyIncludePrefixTrie.build(keyIncludeFields);
-
-        var valueIncludePrefixTrie = new PrefixTrie();
-        valueIncludePrefixTrie.build(valueIncludeFields);
-
-        keyTriplet = new Triplet(keyExcludeFields, keyReplaceFields, keyIncludePrefixTrie);
-        valueTriplet = new Triplet(valueExcludeFields, valueReplaceFields, valueIncludePrefixTrie);
+        var excludeFields = parseCommaSeparatedSingleValues(config, EXCLUDE);
+        var replaceFields = parseCommaSeparatedPairs(config, REPLACE);
+        var includeFields = parseCommaSeparatedSingleValues(config, INCLUDE);
+        var includePrefixTrie = new PrefixTrie();
+        includePrefixTrie.build(includeFields);
+        triplet = new Triplet(excludeFields, replaceFields, includePrefixTrie);
     }
 
-    @Override
-    public R apply(R record) {
-        if (record == null) {
+    protected Schema applyMappingToSchema(String parent, Schema source) {
+        if (source == null) {
             return null;
         }
 
-        var initialParentPath = "";
-
-        var mappedKeySchema = record.keySchema() == null ? null : applyMappingToSchema(keyTriplet, initialParentPath, record.keySchema());
-        var mappedKey = record.key() == null ? null : copyValuesToNewSchema(keyTriplet, initialParentPath, record.keySchema(), mappedKeySchema, record.key());
-
-        var mappedValueSchema = record.valueSchema() == null ? null : applyMappingToSchema(valueTriplet, initialParentPath, record.valueSchema());
-        var mappedValue = record.value() == null ? null : copyValuesToNewSchema(valueTriplet, initialParentPath, record.valueSchema(), mappedValueSchema, record.value());
-
-        return record.newRecord(
-                record.topic(),
-                record.kafkaPartition(),
-                mappedKeySchema,
-                mappedKey,
-                mappedValueSchema,
-                mappedValue,
-                record.timestamp()
-        );
-    }
-
-    private Schema applyMappingToSchema(Triplet triplet, String parent, Schema source) {
         return switch (source.type()) {
             case ARRAY -> {
-                var mappedSchema = applyMappingToSchema(triplet, parent, source.valueSchema());
+                var mappedSchema = applyMappingToSchema(parent, source.valueSchema());
                 var arrayBuilder = SchemaBuilder.array(mappedSchema).name(source.name());
                 yield SchemaCopyUtil.copySchemaBasics(source, arrayBuilder).build();
             }
-            case STRUCT -> applyMappingsToStruct(triplet, parent, source);
+            case STRUCT -> applyMappingsToStruct(parent, source);
             case null, default -> source;
         };
     }
 
-    private Schema applyMappingsToStruct(Triplet triplet, String parent, Schema struct) {
+    private Schema applyMappingsToStruct(String parent, Schema struct) {
         var copiedSchema = SchemaCopyUtil.copySchemaBasics(struct);
 
         for (var field : struct.fields()) {
@@ -179,32 +118,32 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
             }
 
             var mappedName = triplet.replacedFieldName(fullPath, field.name());
-            copiedSchema.field(mappedName, applyMappingToSchema(triplet, fullPath, field.schema()));
+            copiedSchema.field(mappedName, applyMappingToSchema(fullPath, field.schema()));
         }
 
         return copiedSchema.build();
     }
 
-    private Object copyValuesToNewSchema(Triplet triplet, String parent, Schema source, Schema target, Object input) {
-        if (source == null) {
+    protected Object copyValuesToNewSchema(String parent, Schema source, Schema target, Object input) {
+        if (input == null) {
             return null;
         }
 
         return switch (source.type()) {
-            case ARRAY -> copyArray(triplet, parent, source.valueSchema(), target.valueSchema(), input);
-            case STRUCT -> copyStruct(triplet, parent, source, target, input);
+            case ARRAY -> copyArray(parent, source.valueSchema(), target.valueSchema(), input);
+            case STRUCT -> copyStruct(parent, source, target, input);
             case null, default -> input;
         };
     }
 
     @SuppressWarnings("unchecked")
-    private List<Object> copyArray(Triplet triplet, String parent, Schema source, Schema target, Object input) {
+    private List<Object> copyArray(String parent, Schema source, Schema target, Object input) {
         var inputObjects = (List<Object>) input;
 
-        return inputObjects.stream().map(it -> copyValuesToNewSchema(triplet, parent, source, target, it)).toList();
+        return inputObjects.stream().map(it -> copyValuesToNewSchema(parent, source, target, it)).toList();
     }
 
-    private Struct copyStruct(Triplet triplet, String parent, Schema source, Schema target, Object input) {
+    private Struct copyStruct(String parent, Schema source, Schema target, Object input) {
         var currentStruct = requireStruct(input, "struct required");
         var newStruct = new Struct(target);
 
@@ -225,9 +164,33 @@ public class ReplaceFieldName<R extends ConnectRecord<R>> implements Transformat
             var currentSchema = field.schema();
             var targetSchema = target.field(mappedName).schema();
 
-            newStruct.put(mappedName, copyValuesToNewSchema(triplet, fullPath, currentSchema, targetSchema, currentValue));
+            newStruct.put(mappedName, copyValuesToNewSchema(fullPath, currentSchema, targetSchema, currentValue));
         }
 
         return newStruct;
+    }
+
+    public static class Key<R extends ConnectRecord<R>> extends ReplaceFieldName<R> {
+        @Override
+        protected Object key(R record, Schema updatedSchema) {
+            return copyValuesToNewSchema("", record.keySchema(), updatedSchema, record.key());
+        }
+
+        @Override
+        protected Schema keySchema(R record) {
+            return applyMappingToSchema("", record.keySchema());
+        }
+    }
+
+    public static class Value<R extends ConnectRecord<R>> extends ReplaceFieldName<R> {
+        @Override
+        protected Object value(R record, Schema updatedSchema) {
+            return copyValuesToNewSchema("", record.valueSchema(), updatedSchema, record.value());
+        }
+
+        @Override
+        protected Schema valueSchema(R record) {
+            return applyMappingToSchema("", record.valueSchema());
+        }
     }
 }

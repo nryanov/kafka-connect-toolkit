@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.transforms.hash;
+package com.nryanov.kafka.connect.toolkit.transforms.domain.hash;
 
 import java.nio.charset.StandardCharsets;
 

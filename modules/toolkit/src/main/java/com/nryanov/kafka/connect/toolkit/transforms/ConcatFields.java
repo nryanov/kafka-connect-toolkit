@@ -1,7 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -9,7 +9,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.transforms.Transformation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,7 +20,7 @@ import java.util.stream.Collectors;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
     private final static String INPUT_FIELDS = "input.fields";
     private final static String INPUT_FIELDS_NULL_REPLACEMENT = "input.fields.null-replacement";
     private final static String OUTPUT_FIELD = "output.field";
@@ -69,14 +68,13 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
     }
 
     @Override
-    public final void close() {
-
-    }
-
-    @Override
     public final void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
         var fieldsRaw = config.getString(INPUT_FIELDS);
+
+        if (fieldsRaw == null) {
+            throw new DataException("fields list is null");
+        }
 
         filter = ConfigParser.parseCommaSeparatedSingleValuesPreserveOrder(fieldsRaw);
         outputField = config.getString(OUTPUT_FIELD);
@@ -173,60 +171,41 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
 
     public static class Key<R extends ConnectRecord<R>> extends ConcatFields<R> {
         @Override
-        public R apply(R record) {
-            if (record == null) {
-                return null;
-            }
-
-            var initialParentPath = "";
+        protected Object key(R record, Schema updatedSchema) {
             var concat = new HashMap<String, List<Object>>();
-
-            var newKeySchema = addFieldToSchema(record.keySchema());
 
             var newKeyStruct = record.key();
             if (newKeyStruct != null) {
-                newKeyStruct = copyValuesToNewSchema(concat, initialParentPath, record.keySchema(), newKeySchema, record.key());
+                newKeyStruct = copyValuesToNewSchema(concat, "", record.keySchema(), updatedSchema, record.key());
                 setConcatenationValue(concat, newKeyStruct);
             }
 
-            return record.newRecord(
-                    record.topic(),
-                    record.kafkaPartition(),
-                    newKeySchema,
-                    newKeyStruct,
-                    record.valueSchema(),
-                    record.value(),
-                    record.timestamp()
-            );
+            return newKeyStruct;
+        }
+
+        @Override
+        protected Schema keySchema(R record) {
+            return addFieldToSchema(record.keySchema());
         }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends ConcatFields<R> {
-        public R apply(R record) {
-            if (record == null) {
-                return null;
-            }
-
-            var initialParentPath = "";
+        @Override
+        protected Object value(R record, Schema updatedSchema) {
             var concat = new HashMap<String, List<Object>>();
-
-            var newValueSchema = addFieldToSchema(record.valueSchema());
 
             var newValueStruct = record.value();
             if (newValueStruct != null) {
-                newValueStruct = copyValuesToNewSchema(concat, initialParentPath, record.valueSchema(), newValueSchema, record.value());
+                newValueStruct = copyValuesToNewSchema(concat, "", record.valueSchema(), updatedSchema, record.value());
                 setConcatenationValue(concat, newValueStruct);
             }
 
-            return record.newRecord(
-                    record.topic(),
-                    record.kafkaPartition(),
-                    record.keySchema(),
-                    record.key(),
-                    newValueSchema,
-                    newValueStruct,
-                    record.timestamp()
-            );
+            return newValueStruct;
+        }
+
+        @Override
+        protected Schema valueSchema(R record) {
+            return addFieldToSchema(record.valueSchema());
         }
     }
 }
