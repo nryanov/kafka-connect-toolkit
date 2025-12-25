@@ -90,7 +90,6 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
 
         var firstField = filter.getFirst();
         var firstRawValue = concat.get(firstField);
-        System.out.println("FIRST VALUE: " + firstRawValue);
         var firstValue = firstRawValue == null ? nullReplacement : firstRawValue
                 .stream()
                 .map(it -> it == null ? nullReplacement : it.toString())
@@ -131,6 +130,7 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> implements Transf
 
     protected Object copyValuesToNewSchema(Map<String, List<Object>> concat, String parent, Schema source, Schema target, Object input) {
         return switch (source.type()) {
+            // explicitly handle array to correctly concat all items in the selected array field(s)
             case ARRAY -> copyArray(concat, parent, source.valueSchema(), target.valueSchema(), input);
             case STRUCT -> copyStruct(concat, parent, source, target, input);
             case null, default -> {

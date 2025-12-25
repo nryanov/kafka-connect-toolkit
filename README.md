@@ -1,6 +1,26 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### InsertHash
+Calculate hash value from selected field and insert the result as a new field. Allowed algorithms:
+- MD5
+- SHA1
+- SHA256
+
+Input field must be a type of string.
+
+- transform for key: `com.nryanov.kafka.connect.toolkit.InsertHash$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.InsertHash$Value`
+
+```properties
+transforms=insertHash
+transforms.insertHash.type=com.nryanov.kafka.connect.toolkit.InsertHash$Key
+
+transforms.insertHash.input.fields={input field. may be nested}
+transforms.insertHash.output.field={output field name}
+transforms.insertHash.algorithm={algorithm} # default: md5
+```
+
 ### ConcatFields
 Concat selected fields in the new single optional string field. Allow to concat nested fields (in arrays, structs). 
 Only leaf fields are supported. If non-leaf field is selected, then it will be considered as NULL.
