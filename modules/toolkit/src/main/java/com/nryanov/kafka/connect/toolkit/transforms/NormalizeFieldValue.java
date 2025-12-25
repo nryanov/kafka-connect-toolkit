@@ -78,6 +78,10 @@ public abstract class NormalizeFieldValue<R extends ConnectRecord<R>> extends Ab
 
     @SuppressWarnings("unchecked")
     private Object applyMappings(String fieldName, Schema schema, Object input) {
+        if (input == null) {
+            return null;
+        }
+
         return switch (schema.type()) {
             case STRUCT -> applyMappingsToStruct(fieldName, schema, (Struct) input);
             case ARRAY -> applyMappingsToArray(fieldName, schema, (List<Object>) input);

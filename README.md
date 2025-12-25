@@ -246,12 +246,23 @@ transforms.normalizeFieldValueInValue.fields=a.b.c.d:UPPER_CAMEL:UPPER_UNDERSCOR
 ```
 
 ### NormalizeFieldName
-Re-format schema field names to specified format  
+Re-format schema field names to specified format. Allowed values:
+- LOWER_HYPHEN
+- LOWER_UNDERSCORE
+- LOWER_CAMEL
+- UPPER_CAMEL
+- UPPER_UNDERSCORE
+
 ```properties
-transforms=normalizeFieldName
-transforms.normalizeFieldName.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldName
-transforms.normalizeFieldName.case.from={LOWER_HYPHEN|LOWER_UNDERSCORE|LOWER_CAMEL|UPPER_CAMEL|UPPER_UNDERSCORE}
-transforms.normalizeFieldName.case.to={LOWER_HYPHEN|LOWER_UNDERSCORE|LOWER_CAMEL|UPPER_CAMEL|UPPER_UNDERSCORE}
+transforms=normalizeFieldNameKey,normalizeFieldNameValue
+
+transforms.normalizeFieldNameKey.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldName$Key
+transforms.normalizeFieldNameKey.case.from=LOWER_HYPHEN
+transforms.normalizeFieldNameKey.case.to=LOWER_UNDERSCORE
+
+transforms.normalizeFieldNameValue.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldName$Value
+transforms.normalizeFieldNameValue.case.from=UPPER_UNDERSCORE
+transforms.normalizeFieldNameValue.case.to=UPPER_CAMEL
 ```
 
 ## Debezium

@@ -12,6 +12,17 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class NormalizeFieldValueTest {
     @Test
+    public void correctlyHandleNullPayload() {
+        var transform = new NormalizeFieldValue.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "a:LOWER_UNDERSCORE:LOWER_HYPHEN,c.inner_a:LOWER_UNDERSCORE:LOWER_CAMEL,c.inner_c.inner_inner_a:LOWER_UNDERSCORE:LOWER_CAMEL"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
+    @Test
     public void changeCaseOfNestedFieldsInKey() {
         var transform = new NormalizeFieldValue.Key<SinkRecord>();
         transform.configure(Map.of(

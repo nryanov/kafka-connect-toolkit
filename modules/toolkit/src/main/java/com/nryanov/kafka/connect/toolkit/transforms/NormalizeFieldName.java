@@ -8,7 +8,6 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.transforms.Transformation;
 
 import java.util.List;
 import java.util.Map;
@@ -16,7 +15,7 @@ import java.util.Objects;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
     private final static String INITIAL_CASE = "case.initial";
     private final static String TARGET_CASE = "case.target";
     private final static ConfigDef CONFIG_DEF =
@@ -45,41 +44,17 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
     }
 
     @Override
-    public void close() {
-
-    }
-
-    @Override
     public void configure(Map<String, ?> configs) {
         var config = new AbstractConfig(CONFIG_DEF, configs);
         initialCase = CaseFormat.valueOf(Objects.requireNonNull(config.getString(INITIAL_CASE), "Empty case.initial config"));
         targetCase = CaseFormat.valueOf(Objects.requireNonNull(config.getString(TARGET_CASE), "Empty case.target config"));
     }
 
-    @Override
-    public R apply(R record) {
-        if (record == null) {
+    protected Schema applyMappingToSchema(Schema source) {
+        if (source == null) {
             return null;
         }
 
-        var mappedKeySchema = applyMappingToSchema(record.keySchema());
-        var mappedValueSchema = applyMappingToSchema(record.valueSchema());
-
-        var mappedKey = copyValuesToNewSchema(record.keySchema(), mappedKeySchema, record.key());
-        var mappedValue = copyValuesToNewSchema(record.valueSchema(), mappedValueSchema, record.value());
-
-        return record.newRecord(
-                record.topic(),
-                record.kafkaPartition(),
-                mappedKeySchema,
-                mappedKey,
-                mappedValueSchema,
-                mappedValue,
-                record.timestamp()
-        );
-    }
-
-    private Schema applyMappingToSchema(Schema source) {
         return switch (source.type()) {
             case ARRAY -> {
                 var mappedSchema = applyMappingToSchema(source.valueSchema());
@@ -102,7 +77,11 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
         return copiedSchema.build();
     }
 
-    private Object copyValuesToNewSchema(Schema source, Schema target, Object input) {
+    protected Object copyValuesToNewSchema(Schema source, Schema target, Object input) {
+        if (input == null) {
+            return null;
+        }
+
         return switch (source.type()) {
             case ARRAY -> copyArray(source.valueSchema(), target.valueSchema(), input);
             case STRUCT -> copyStruct(source, target, input);
@@ -139,5 +118,29 @@ public class NormalizeFieldName<R extends ConnectRecord<R>> implements Transform
         }
 
         return newStruct;
+    }
+
+    public static class Key<R extends ConnectRecord<R>> extends NormalizeFieldName<R> {
+        @Override
+        protected Object key(R record, Schema updatedSchema) {
+            return copyValuesToNewSchema(record.keySchema(), updatedSchema, record.key());
+        }
+
+        @Override
+        protected Schema keySchema(R record) {
+            return applyMappingToSchema(record.keySchema());
+        }
+    }
+
+    public static class Value<R extends ConnectRecord<R>> extends NormalizeFieldName<R> {
+        @Override
+        protected Object value(R record, Schema updatedSchema) {
+            return copyValuesToNewSchema(record.valueSchema(), updatedSchema, record.value());
+        }
+
+        @Override
+        protected Schema valueSchema(R record) {
+            return applyMappingToSchema(record.valueSchema());
+        }
     }
 }
