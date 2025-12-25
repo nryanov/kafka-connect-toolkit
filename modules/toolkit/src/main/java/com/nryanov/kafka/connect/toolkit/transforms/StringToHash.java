@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
@@ -104,8 +105,13 @@ public abstract class StringToHash<R extends ConnectRecord<R>> implements Transf
     }
 
     protected Object copyPayload(String field, Schema source, Object input) {
+        if (input == null) {
+            return null;
+        }
+
         return switch (source.type()) {
             case STRUCT -> copyStruct(field, source, input);
+            case ARRAY -> copyArray(field, source.valueSchema(), input);
             case STRING -> {
                 if (mapping.containsKey(field)) {
                     var string = (String) input;
@@ -117,6 +123,13 @@ public abstract class StringToHash<R extends ConnectRecord<R>> implements Transf
             }
             case null, default -> input;
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    protected List<Object> copyArray(String parent, Schema source, Object input) {
+        var inputObjects = (List<Object>) input;
+
+        return inputObjects.stream().map(it -> copyPayload(parent, source, it)).toList();
     }
 
     private Struct copyStruct(String parent, Schema source, Object input) {

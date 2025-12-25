@@ -1,6 +1,24 @@
 # kafka-connect-toolkit
 
 ## Toolkit
+### StringToHash
+Replace string values by it's calculated hash value in hex format. Allowed hash algorithms:
+- MD5
+- SHA1
+- SHA256
+
+Input field must be a type of string (or array of strings). Nested fields are also allowed.
+
+- transform for key: `com.nryanov.kafka.connect.toolkit.InsertHash$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.InsertHash$Value`
+
+```properties
+transforms=stringToHash
+transforms.insertHash.type=com.nryanov.kafka.connect.toolkit.StringToHash$Key
+
+transforms.insertHash.fields=field:md5,array.nested_field:sha1,struct.nested_level.nested_field:sha256
+```
+
 ### InsertHash
 Calculate hash value from selected field and insert the result as a new field. Allowed algorithms:
 - MD5
