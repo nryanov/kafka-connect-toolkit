@@ -150,16 +150,14 @@ public abstract class StringToHash<R extends ConnectRecord<R>> implements Transf
     public static class Key<R extends ConnectRecord<R>> extends StringToHash<R> {
         @Override
         protected Object key(R record) {
-            var initialParentPath = "";
-            return copyPayload(initialParentPath, record.keySchema(), record.key());
+            return copyPayload("", record.keySchema(), record.key());
         }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends StringToHash<R> {
         @Override
         protected Object value(R record) {
-            var initialParentPath = "";
-            return copyPayload(initialParentPath, record.valueSchema(), record.value());
+            return copyPayload("", record.valueSchema(), record.value());
         }
     }
 }

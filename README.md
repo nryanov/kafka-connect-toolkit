@@ -130,12 +130,14 @@ This transform allows:
 - Specify charset which should be used to decode string
 
 ```properties
-transforms=bytesToString
-transforms.bytesToString.type=com.nryanov.kafka.connect.toolkit.BytesToString
+transforms=bytesToStringKey,bytesToStringValue
 
-transforms.bytesToString.key.fields={comma-separated list of fields in key-part | *} # default: null
-transforms.bytesToString.value.fields={comma-separated list of fields in value-part | *} # default: null
-transforms.bytesToString.charset={charset} # default: UTF-8
+transforms.bytesToStringKey.type=com.nryanov.kafka.connect.toolkit.BytesToString$Key
+transforms.bytesToStringKey.fields=field,array.inner,struct.nested.inner
+transforms.bytesToStringKey.charset=WIN1251
+
+transforms.bytesToStringValue.type=com.nryanov.kafka.connect.toolkit.BytesToString$Value
+transforms.bytesToStringValue.fields=*
 ```
 
 ### DecimalAdjustScaleAndPrecision
