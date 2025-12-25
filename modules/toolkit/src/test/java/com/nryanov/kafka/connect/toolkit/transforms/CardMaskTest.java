@@ -10,9 +10,36 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class CardMaskTest {
+    @Test
+    public void correctlyHandleNullPayload() {
+        var transform = new CardMask.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "field_1"
+        ));
+
+        var schema = SchemaBuilder
+                .struct()
+                .field("field_1", Schema.STRING_SCHEMA)
+                .field("field_2", Schema.STRING_SCHEMA)
+                .build();
+
+        var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+        var result = transform.apply(record);
+
+        var expectedSchema = SchemaBuilder
+                .struct()
+                .field("field_1", Schema.STRING_SCHEMA)
+                .field("field_2", Schema.STRING_SCHEMA)
+                .build();
+
+        assertEquals(expectedSchema, result.keySchema());
+        assertNull(result.key());
+    }
+
     @Test
     public void maskFieldInKey() {
         var transform = new CardMask.Key<SinkRecord>();

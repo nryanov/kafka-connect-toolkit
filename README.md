@@ -165,12 +165,15 @@ This transform allows:
     - NONE -- does not apply any updates (DEFAULT)
     - VALUE -- set desired value for scale if current scale is negative
 
+Transforms:
+- Key: `com.nryanov.kafka.connect.toolkit.DecimalAdjustScaleAndPrecision$Key`
+- Value: `com.nryanov.kafka.connect.toolkit.DecimalAdjustScaleAndPrecision$Value`
+
 ```properties
 transforms=decimalAdjustScaleAndPrecision
-transforms.decimalAdjustScaleAndPrecision.type=com.nryanov.kafka.connect.toolkit.DecimalAdjustScaleAndPrecision
+transforms.decimalAdjustScaleAndPrecision.type=com.nryanov.kafka.connect.toolkit.DecimalAdjustScaleAndPrecision$Key
 
-transforms.decimalAdjustScaleAndPrecision.key.fields={comma-separated list of fields in key-part | *} # default: null
-transforms.decimalAdjustScaleAndPrecision.value.fields={comma-separated list of fields in value-part | *} # default: null
+transforms.decimalAdjustScaleAndPrecision.fields={comma-separated list of fields in key-part | *}
 transforms.decimalAdjustScaleAndPrecision.precision.value={target precision value} # default: null
 transforms.decimalAdjustScaleAndPrecision.precision.mode={NONE|IF_NOT_SET|VALUE|LIMIT} # default: NONE
 transforms.decimalAdjustScaleAndPrecision.precision.undefined-value={value which should be considered as undefined} # default: -1

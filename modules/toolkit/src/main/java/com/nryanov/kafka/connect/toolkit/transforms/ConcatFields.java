@@ -72,6 +72,10 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractB
         var config = new AbstractConfig(CONFIG_DEF, configs);
         var fieldsRaw = config.getString(INPUT_FIELDS);
 
+        if (fieldsRaw == null) {
+            throw new DataException("fields list is null");
+        }
+
         filter = ConfigParser.parseCommaSeparatedSingleValuesPreserveOrder(fieldsRaw);
         outputField = config.getString(OUTPUT_FIELD);
         nullReplacement = config.getString(INPUT_FIELDS_NULL_REPLACEMENT);

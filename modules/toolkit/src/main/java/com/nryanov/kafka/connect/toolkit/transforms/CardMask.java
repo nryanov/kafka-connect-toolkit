@@ -133,7 +133,7 @@ public abstract class CardMask<R extends ConnectRecord<R>> extends AbstractBaseT
     }
 
     protected Object applyReplacements(String parent, Schema schema, Object input) {
-        if (schema == null) {
+        if (input == null) {
             return null;
         }
 
