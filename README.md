@@ -201,19 +201,19 @@ transforms.cardMaskFieldValue.masking.card-number-upper-bound={maximum allowed l
 ```
 
 ### ReplaceFieldName
-This transform allow to rename, exclude/include specified fields includes the nested ones. Also you don't need to set up different transforms for key or value because
-this transform allows you to set up needed changes in a single config.
+This transform allow to rename, exclude/include specified fields includes the nested ones. Supports nested fields.
 ```properties
-transforms=replaceFieldName
-transforms.replaceFieldName.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldName
+transforms=replaceFieldNameKey,replaceFieldNameValue
 # key
-transforms.replaceFieldName.key.exclude=a,b.inner1.inner2
-transforms.replaceFieldName.key.include=c,d.inner1
-transforms.replaceFieldName.key.replace=c:renamed_c,d.inner1.inner2:renamed_inner_field
+transforms.replaceFieldNameKey.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldName$Key
+transforms.replaceFieldNameKey.exclude=a,b.inner1.inner2
+transforms.replaceFieldNameKey.include=c,d.inner1
+transforms.replaceFieldNameKey.replace=c:renamed_c,d.inner1.inner2:renamed_inner_field
 # value
-transforms.replaceFieldName.value.exclude=a,b.inner1.inner2
-transforms.replaceFieldName.value.include=c,d.inner1
-transforms.replaceFieldName.value.replace=c:renamed_c,d.inner1.inner2:renamed_inner_field
+transforms.replaceFieldNameValue.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldName$Value
+transforms.replaceFieldNameValue.exclude=a,b.inner1.inner2
+transforms.replaceFieldNameValue.include=c,d.inner1
+transforms.replaceFieldNameValue.replace=c:renamed_c,d.inner1.inner2:renamed_inner_field
 ```
 
 As this transform's logic is similar to [confluent ReplaceField](https://docs.confluent.io/kafka-connectors/transforms/current/replacefield-confluent.html), you can find more examples in it's doc [confluent ReplaceField](https://docs.confluent.io/kafka-connectors/transforms/current/replacefield-confluent.html)

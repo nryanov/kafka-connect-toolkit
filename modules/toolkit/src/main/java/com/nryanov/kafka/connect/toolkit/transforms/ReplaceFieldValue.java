@@ -72,7 +72,7 @@ public abstract class ReplaceFieldValue<R extends ConnectRecord<R>> extends Abst
     }
 
     protected Object applyReplacements(String parent, Schema schema, Object input) {
-        if (schema == null) {
+        if (input == null) {
             return null;
         }
 

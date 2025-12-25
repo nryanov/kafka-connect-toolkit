@@ -9,9 +9,21 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ReplaceFieldValueTest {
+    @Test
+    public void correctlyHandleNullPayload() {
+        var transform = new ReplaceFieldValue.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "exclude", "b,c"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
     @Test
     public void replaceFieldInKey() {
         var transform = new ReplaceFieldValue.Key<SinkRecord>();
