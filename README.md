@@ -222,12 +222,12 @@ As this transform's logic is similar to [confluent ReplaceField](https://docs.co
 This transform allow to replace field values (including the nested ones).
 Format of settings: `{field_name}:{replacement}`. If replacement couldn't be applied, then default value of type will be used.
 ```properties
-transforms=replaceFieldValue
-transforms.replaceFieldValue.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldValue
-# key
-transforms.replaceFieldValue.key.fields=a:replacement
-# value
-transforms.replaceFieldName.value.fields=a.b.c:replacement
+transforms=replaceFieldValueInKey,replaceFieldValueInValue
+transforms.replaceFieldValueInKey.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldValue$Key
+transforms.replaceFieldValueInKey.fields=a.b.c:replacement,d:replacement
+
+transforms.replaceFieldValueInValue.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldValue$Value
+transforms.replaceFieldValueInValue.fields=a:replacement
 ```
 
 ### NormalizeFieldValue
