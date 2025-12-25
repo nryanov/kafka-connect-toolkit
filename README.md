@@ -236,10 +236,13 @@ If schema of key or value is just a plain string then use `:{FROM}:{TO}` (empty 
 
 General format of configs is: `{fieldName}:{from}:{to}`
 ```properties
-transforms=normalizeFieldValue
-transforms.normalizeFieldValue.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldValue
-transforms.normalizeFieldValue.key.fields=a:LOWER_HYPHEN:LOWER_UNDERSCORE,b:LOWER_CAMEL:UPPER_CAMEL,a.b.c:UPPER_UNDERSCORE:UPPER_CAMEL
-transforms.normalizeFieldValue.value.fields=a.b.c.d:UPPER_CAMEL:UPPER_UNDERSCORE
+transforms=normalizeFieldValueInKey,normalizeFieldValueInValue
+
+transforms.normalizeFieldValueInKey.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldValue$Key
+transforms.normalizeFieldValueInKey.fields=a:LOWER_HYPHEN:LOWER_UNDERSCORE,b:LOWER_CAMEL:UPPER_CAMEL,a.b.c:UPPER_UNDERSCORE:UPPER_CAMEL
+
+transforms.normalizeFieldValueInValue.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldValue$Value
+transforms.normalizeFieldValueInValue.fields=a.b.c.d:UPPER_CAMEL:UPPER_UNDERSCORE
 ```
 
 ### NormalizeFieldName
