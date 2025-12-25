@@ -1,4 +1,23 @@
 # kafka-connect-toolkit
+- Toolkit
+  - [StringToHash](#stringtohash)
+  - [InsertHash](#inserthash)
+  - [ConcatFields](#concatfields)
+  - [SetNull](#setnull)
+  - [KeyToValue](#keytovalue)
+  - [ValueToKey](#valuetokey)
+  - [SwapValueAndKey](#swapvalueandkey)
+  - [BytesToBase64](#bytestobase64)
+  - [BytesToString](#bytestostring)
+  - [DecimalAdjustScaleAndPrecision](#decimaladjustscaleandprecision)
+  - [CardMaskFieldValue](#cardmaskfieldvalue)
+  - [ReplaceFieldName](#replacefieldname)
+  - [ReplaceFieldValue](#replacefieldvalue)
+  - [NormalizeFieldValue](#normalizefieldvalue)
+  - [NormalizeFieldName](#normalizefieldname)
+- Debezium
+  - [TimestampConverter](#timestampconverter)
+  - [SchemaRename](#schemarename)
 
 ## Toolkit
 ### StringToHash
