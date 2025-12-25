@@ -12,12 +12,12 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class CardMaskFieldValueTest {
+public class CardMaskTest {
     @Test
-    public void maskOnlyKeyField() {
-        var transform = new CardMaskFieldValue<SinkRecord>();
+    public void maskFieldInKey() {
+        var transform = new CardMask.Key<SinkRecord>();
         transform.configure(Map.of(
-                "key.fields", "field"
+                "fields", "field"
         ));
 
         var schema = SchemaBuilder.struct().field("field", Schema.STRING_SCHEMA).build();
@@ -38,10 +38,10 @@ public class CardMaskFieldValueTest {
     }
 
     @Test
-    public void maskOnlyValueField() {
-        var transform = new CardMaskFieldValue<SinkRecord>();
+    public void maskFieldInValue() {
+        var transform = new CardMask.Value<SinkRecord>();
         transform.configure(Map.of(
-                "value.fields", "field"
+                "fields", "field"
         ));
 
         var schema = SchemaBuilder.struct().field("field", Schema.STRING_SCHEMA).build();
@@ -63,10 +63,9 @@ public class CardMaskFieldValueTest {
 
     @Test
     public void maskNestedField() {
-        var transform = new CardMaskFieldValue<SinkRecord>();
+        var transform = new CardMask.Key<SinkRecord>();
         transform.configure(Map.of(
-                "key.fields", "b.inner_a",
-                "value.fields", "b.inner_c"
+                "fields", "b.inner_a"
         ));
 
         var nestedSchema = SchemaBuilder
@@ -81,56 +80,38 @@ public class CardMaskFieldValueTest {
                 .field("b", nestedSchema)
                 .build();
 
-        var nestedKeyStruct = new Struct(nestedSchema)
+        var nestedStruct = new Struct(nestedSchema)
                 .put("inner_a", "Some text with card number 4111 1111 1111 1111 which should be masked")
                 .put("inner_b", "inner_b_value")
                 .put("inner_c", "Not masked card number 4111 1111 1111 1111 because this filed is not selected");
-        var keyStruct = new Struct(schema)
+        var struct = new Struct(schema)
                 .put("a", "a_field_value")
-                .put("b", nestedKeyStruct);
+                .put("b", nestedStruct);
 
-        var nestedValueStruct = new Struct(nestedSchema)
-                .put("inner_a", "inner_a_value")
-                .put("inner_b", "inner_b_value")
-                .put("inner_c", "4111 1111 1111 1111");
-        var valueStruct = new Struct(schema)
-                .put("a", "a_field_value")
-                .put("b", nestedValueStruct);
-
-        var record = new SinkRecord("topic", 1, keyStruct.schema(), keyStruct, valueStruct.schema(), valueStruct, 0L);
+        var record = new SinkRecord("topic", 1, struct.schema(), struct, null, null, 0L);
 
         var result = transform.apply(record);
-        var resultValueStruct = requireStruct(result.value(), "test");
-        var resultKeyStruct = requireStruct(result.key(), "test");
+        var resultStruct = requireStruct(result.key(), "test");
 
-        var expectedNestedKeyStruct = new Struct(nestedSchema)
+        var expectedNestedStruct = new Struct(nestedSchema)
                 .put("inner_a", "Some text with card number 4111********1111 which should be masked")
                 .put("inner_b", "inner_b_value")
                 .put("inner_c", "Not masked card number 4111 1111 1111 1111 because this filed is not selected");
-        var expectedKeyStruct = new Struct(schema)
+        var expectedStruct = new Struct(schema)
                 .put("a", "a_field_value")
-                .put("b", expectedNestedKeyStruct);
+                .put("b", expectedNestedStruct);
 
-        var expectedNestedValueStruct = new Struct(nestedSchema)
-                .put("inner_a", "inner_a_value")
-                .put("inner_b", "inner_b_value")
-                .put("inner_c", "4111********1111");
-        var expectedValueStruct = new Struct(schema)
-                .put("a", "a_field_value")
-                .put("b", expectedNestedValueStruct);
-
-        assertEquals(expectedKeyStruct, resultKeyStruct);
-        assertEquals(expectedValueStruct, resultValueStruct);
+        assertEquals(expectedStruct, resultStruct);
     }
 
     @Test
     public void throwErrorIfIncorrectLowerAndUpperBoundWereUsed() {
         var incorrectConfig = Map.of(
-                "value.fields", "field",
+                "fields", "field",
                 "masking.card-number-lower-bound", 10,
                 "masking.card-number-upper-bound", 9
         );
-        var transform = new CardMaskFieldValue<SinkRecord>();
+        var transform = new CardMask.Key<SinkRecord>();
 
         assertThrows(IllegalArgumentException.class, () -> transform.configure(incorrectConfig));
     }
