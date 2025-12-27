@@ -135,4 +135,28 @@ public abstract class CastToString<R extends ConnectRecord<R>> extends AbstractB
 
         return input.toString();
     }
+
+    public static class Key<R extends ConnectRecord<R>> extends CastToString<R> {
+        @Override
+        protected Object key(R record, Schema updatedSchema) {
+            return copyValuesToNewSchema("", record.keySchema(), updatedSchema, record.key());
+        }
+
+        @Override
+        protected Schema keySchema(R record) {
+            return applyMappingToSchema("", record.keySchema());
+        }
+    }
+
+    public static class Value<R extends ConnectRecord<R>> extends CastToString<R> {
+        @Override
+        protected Object value(R record, Schema updatedSchema) {
+            return copyValuesToNewSchema("", record.valueSchema(), updatedSchema, record.value());
+        }
+
+        @Override
+        protected Schema valueSchema(R record) {
+            return applyMappingToSchema("", record.valueSchema());
+        }
+    }
 }
