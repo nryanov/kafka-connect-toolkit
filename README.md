@@ -1,5 +1,6 @@
 # kafka-connect-toolkit
 - Toolkit
+  - [HeaderFromField](#headerfromfield)
   - [CastToString](#casttostring)
   - [StringToHash](#stringtohash)
   - [InsertHash](#inserthash)
@@ -20,12 +21,25 @@
   - [SchemaRename](#schemarename)
 
 ## Toolkit
+### HeaderFromField
+Extract field(s) value and set it as header. 
+Nested fields are also allowed.
+
+- transform for key: `com.nryanov.kafka.connect.toolkit.HeaderFromField$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.HeaderFromField$Value`
+
+```properties
+transforms=headerFromField
+transforms.headerFromField.type=com.nryanov.kafka.connect.toolkit.HeaderFromField$Key
+transforms.headerFromField.mappings=field:header2,nested.field.name:header2
+```
+
 ### CastToString
 Cast field to string. Allowed input field types: `FLOAT64, FLOAT32, BOOLEAN, INT8, INT16, INT32, INT64` and their array alternatives.
 Nested fields are also allowed.
 
-- transform for key: `com.nryanov.kafka.connect.toolkit.InsertHash$Key`
-- transform for value: `com.nryanov.kafka.connect.toolkit.InsertHash$Value`
+- transform for key: `com.nryanov.kafka.connect.toolkit.CastToString$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.CastToString$Value`
 
 ```properties
 transforms=castToString
