@@ -1,5 +1,6 @@
 # kafka-connect-toolkit
 - Toolkit
+  - [CastToString](#casttostring)
   - [StringToHash](#stringtohash)
   - [InsertHash](#inserthash)
   - [ConcatFields](#concatfields)
@@ -19,6 +20,19 @@
   - [SchemaRename](#schemarename)
 
 ## Toolkit
+### CastToString
+Cast field to string. Allowed input field types: `FLOAT64, FLOAT32, BOOLEAN, INT8, INT16, INT32, INT64` and their array alternatives.
+Nested fields are also allowed.
+
+- transform for key: `com.nryanov.kafka.connect.toolkit.InsertHash$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.InsertHash$Value`
+
+```properties
+transforms=castToString
+transforms.castToString.type=com.nryanov.kafka.connect.toolkit.CastToString$Key
+transforms.castToString.fields=field,array.nested_field,struct.nested_level.nested_field
+```
+
 ### StringToHash
 Replace string values by it's calculated hash value in hex format. Allowed hash algorithms:
 - MD5

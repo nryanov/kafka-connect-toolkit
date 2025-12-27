@@ -10,9 +10,28 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class StringToHashTest {
+    @Test
+    public void correctlyHandleNullPayload() {
+        var transform = new StringToHash.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "field_1:md5,field_2:sha1"
+        ));
+
+        var schema = SchemaBuilder
+                .struct()
+                .field("field_1", Schema.STRING_SCHEMA)
+                .field("field_2", Schema.STRING_SCHEMA)
+                .build();
+
+        var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
     @Test
     public void mapStringValuesToHashInKey() {
         var transform = new StringToHash.Key<SinkRecord>();
