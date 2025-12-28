@@ -61,4 +61,8 @@ public abstract class AbstractBaseTransform<R extends ConnectRecord<R>> implemen
     protected Schema valueSchema(R record) {
         return record.valueSchema();
     }
+
+    protected boolean requireShema() {
+        return true;
+    }
 }
