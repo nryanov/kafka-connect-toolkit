@@ -1,5 +1,6 @@
 # kafka-connect-toolkit
 - Toolkit
+  - [DropSchemaless](#dropschemaless)
   - [HeaderFromField](#headerfromfield)
   - [CastToString](#casttostring)
   - [StringToHash](#stringtohash)
@@ -21,6 +22,16 @@
   - [SchemaRename](#schemarename)
 
 ## Toolkit
+### DropSchemaless
+Allow to drop record if key or value schema is null
+- transform for key: `com.nryanov.kafka.connect.toolkit.DropSchemaless$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.DropSchemaless$Value`
+
+```properties
+transforms=dropSchemaless
+transforms.dropSchemaless.type=com.nryanov.kafka.connect.toolkit.DropSchemaless$Key
+```
+
 ### HeaderFromField
 Extract field(s) value and set it as header. 
 Nested fields are also allowed.
