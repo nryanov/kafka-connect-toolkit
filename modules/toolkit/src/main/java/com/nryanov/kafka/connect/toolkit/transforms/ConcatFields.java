@@ -128,6 +128,13 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractB
 
     protected Object copyValuesToNewSchema(Map<String, List<Object>> concat, String parent, Schema source, Schema target, Object input) {
         if (input == null) {
+            var current = concat.get(parent);
+            if (current == null) {
+                current = new ArrayList<>();
+            }
+            current.add(null);
+            concat.put(parent, current);
+
             return null;
         }
 
@@ -194,7 +201,7 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractB
 
         @Override
         protected boolean shouldProcess(R record) {
-            return record.keySchema() != null;
+            return record.keySchema() != null && STRUCT.equals(record.keySchema().type());
         }
     }
 
@@ -219,7 +226,7 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractB
 
         @Override
         protected boolean shouldProcess(R record) {
-            return record.valueSchema() != null;
+            return record.valueSchema() != null && STRUCT.equals(record.valueSchema().type());
         }
     }
 }

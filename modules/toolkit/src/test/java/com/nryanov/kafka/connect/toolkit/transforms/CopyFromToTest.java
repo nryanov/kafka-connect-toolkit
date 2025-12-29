@@ -9,9 +9,34 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CopyFromToTest {
+    @Test
+    public void correctlyHandleNullPayload() {
+        var transform = new CopyFromTo.KeyToValue<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "field_1"
+        ));
+
+        var schema = Schema.STRING_SCHEMA;
+
+        var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new CopyFromTo.KeyToValue<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "field_1"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
     @Test
     public void addFieldsToValueFromKey() {
         var transform = new CopyFromTo.KeyToValue<SinkRecord>();

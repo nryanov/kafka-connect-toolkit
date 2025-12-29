@@ -21,14 +21,20 @@ public class StringToHashTest {
                 "fields", "field_1:md5,field_2:sha1"
         ));
 
-        var schema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.STRING_SCHEMA)
-                .field("field_2", Schema.STRING_SCHEMA)
-                .build();
+        var schema = Schema.STRING_SCHEMA;
 
         var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
 
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new StringToHash.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "field_1:md5,field_2:sha1"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
         assertDoesNotThrow(() -> transform.apply(record));
     }
 

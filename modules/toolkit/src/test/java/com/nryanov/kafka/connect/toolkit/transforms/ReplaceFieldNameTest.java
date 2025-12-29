@@ -20,7 +20,20 @@ public class ReplaceFieldNameTest {
                 "exclude", "b,c"
         ));
 
-        var record = new SinkRecord("topic", 1, null, null, null, null, 0L);
+        var schema = Schema.STRING_SCHEMA;
+
+        var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new ReplaceFieldName.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "exclude", "b,c"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
         assertDoesNotThrow(() -> transform.apply(record));
     }
 

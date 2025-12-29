@@ -17,10 +17,23 @@ public class ReplaceFieldValueTest {
     public void correctlyHandleNullPayload() {
         var transform = new ReplaceFieldValue.Key<SinkRecord>();
         transform.configure(Map.of(
-                "exclude", "b,c"
+                "fields", "b:123,c:custom_value"
         ));
 
-        var record = new SinkRecord("topic", 1, null, null, null, null, 0L);
+        var schema = Schema.STRING_SCHEMA;
+
+        var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new ReplaceFieldValue.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "b:123,c:custom_value"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
         assertDoesNotThrow(() -> transform.apply(record));
     }
 
