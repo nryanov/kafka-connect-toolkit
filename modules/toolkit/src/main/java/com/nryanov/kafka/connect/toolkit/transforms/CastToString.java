@@ -52,10 +52,6 @@ public abstract class CastToString<R extends ConnectRecord<R>> extends AbstractB
     }
 
     protected Schema applyMappingToSchema(String parent, Schema source) {
-        if (source == null) {
-            return null;
-        }
-
         return switch (source.type()) {
             case ARRAY -> {
                 var mappedSchema = applyMappingToSchema(parent, source.valueSchema());
@@ -146,6 +142,11 @@ public abstract class CastToString<R extends ConnectRecord<R>> extends AbstractB
         protected Schema keySchema(R record) {
             return applyMappingToSchema("", record.keySchema());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends CastToString<R> {
@@ -157,6 +158,11 @@ public abstract class CastToString<R extends ConnectRecord<R>> extends AbstractB
         @Override
         protected Schema valueSchema(R record) {
             return applyMappingToSchema("", record.valueSchema());
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }

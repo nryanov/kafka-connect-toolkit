@@ -94,10 +94,6 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBas
     }
 
     protected Schema addFieldToSchema(Schema source) {
-        if (!STRUCT.equals(source.type())) {
-            throw new DataException("Expected struct but got: " + source.type());
-        }
-
         var copiedSchema = SchemaCopyUtil.copySchemaBasics(source);
 
         for (var field : source.fields()) {
@@ -111,6 +107,10 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBas
     }
 
     protected Object copyValuesToNewSchema(AtomicReference<String> hash, String parent, Schema source, Schema target, Object input) {
+        if (input == null) {
+            return null;
+        }
+
         return switch (source.type()) {
             case STRUCT -> copyStruct(hash, parent, source, target, input);
             case STRING -> {
@@ -158,6 +158,11 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBas
         protected Schema keySchema(R record) {
             return addFieldToSchema(record.keySchema());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null && STRUCT.equals(record.keySchema().type());
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends InsertHash<R> {
@@ -177,6 +182,11 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBas
             }
 
             return newValueStruct;
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null && STRUCT.equals(record.valueSchema().type());
         }
     }
 }

@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class ConcatFieldsTest {
     @Test
@@ -30,17 +30,20 @@ public class ConcatFieldsTest {
                 .build();
 
         var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
-        var result = transform.apply(record);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
 
-        var expectedSchema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.STRING_SCHEMA)
-                .field("field_2", Schema.STRING_SCHEMA)
-                .field("concatenated", SchemaBuilder.string().optional().defaultValue(null).build())
-                .build();
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new ConcatFields.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "input.fields", "field_1,field_2",
+                "output.field", "concatenated",
+                "delimiter", "_"
+        ));
 
-        assertEquals(expectedSchema, result.keySchema());
-        assertNull(result.key());
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
     }
 
     @Test

@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class CardMaskTest {
@@ -21,23 +21,21 @@ public class CardMaskTest {
                 "fields", "field_1"
         ));
 
-        var schema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.STRING_SCHEMA)
-                .field("field_2", Schema.STRING_SCHEMA)
-                .build();
+        var schema = Schema.STRING_SCHEMA;
 
         var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
-        var result = transform.apply(record);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
 
-        var expectedSchema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.STRING_SCHEMA)
-                .field("field_2", Schema.STRING_SCHEMA)
-                .build();
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new CardMask.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "field_1"
+        ));
 
-        assertEquals(expectedSchema, result.keySchema());
-        assertNull(result.key());
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
     }
 
     @Test

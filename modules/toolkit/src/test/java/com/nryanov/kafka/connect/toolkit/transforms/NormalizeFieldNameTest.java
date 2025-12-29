@@ -1,6 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.nryanov.kafka.connect.toolkit.transforms.common.DefaultRecords;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +18,21 @@ public class NormalizeFieldNameTest {
                 "case.target", "LOWER_CAMEL"
         ));
 
-        var record = new SinkRecord("topic", 1, null, null, null, null, 0L);
+        var schema = Schema.STRING_SCHEMA;
+
+        var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new NormalizeFieldName.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "case.initial", "LOWER_UNDERSCORE",
+                "case.target", "LOWER_CAMEL"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
         assertDoesNotThrow(() -> transform.apply(record));
     }
 

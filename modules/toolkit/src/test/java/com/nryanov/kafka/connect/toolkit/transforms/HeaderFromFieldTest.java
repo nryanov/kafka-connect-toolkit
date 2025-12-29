@@ -21,14 +21,20 @@ public class HeaderFromFieldTest {
                 "mappings", "field_1:header_from_field_1,field_2:header_from_field_2"
         ));
 
-        var schema = SchemaBuilder
-                .struct()
-                .field("field_1", Schema.STRING_SCHEMA)
-                .field("field_2", Schema.STRING_SCHEMA)
-                .build();
+        var schema = Schema.STRING_SCHEMA;
 
         var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
 
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new HeaderFromField.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "mappings", "field_1:header_from_field_1,field_2:header_from_field_2"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
         assertDoesNotThrow(() -> transform.apply(record));
     }
 

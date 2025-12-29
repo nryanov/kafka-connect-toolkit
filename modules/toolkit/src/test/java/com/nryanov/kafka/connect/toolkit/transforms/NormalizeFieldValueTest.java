@@ -18,7 +18,20 @@ public class NormalizeFieldValueTest {
                 "fields", "a:LOWER_UNDERSCORE:LOWER_HYPHEN,c.inner_a:LOWER_UNDERSCORE:LOWER_CAMEL,c.inner_c.inner_inner_a:LOWER_UNDERSCORE:LOWER_CAMEL"
         ));
 
-        var record = new SinkRecord("topic", 1, null, null, null, null, 0L);
+        var schema = Schema.STRING_SCHEMA;
+
+        var record = new SinkRecord("topic", 1, schema, null, null, null, 0L);
+        assertDoesNotThrow(() -> transform.apply(record));
+    }
+
+    @Test
+    public void correctlyHandleNullSchema() {
+        var transform = new NormalizeFieldValue.Key<SinkRecord>();
+        transform.configure(Map.of(
+                "fields", "a:LOWER_UNDERSCORE:LOWER_HYPHEN,c.inner_a:LOWER_UNDERSCORE:LOWER_CAMEL,c.inner_c.inner_inner_a:LOWER_UNDERSCORE:LOWER_CAMEL"
+        ));
+
+        var record = new SinkRecord("topic", 1, null, "value", null, null, 0L);
         assertDoesNotThrow(() -> transform.apply(record));
     }
 

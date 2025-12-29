@@ -51,6 +51,10 @@ public abstract class HeaderFromField<R extends ConnectRecord<R>> extends Abstra
             return null;
         }
 
+        if (!shouldProcess(record)) {
+            return record;
+        }
+
         var operatingSchema = operatingSchema(record);
         var operatingValue = operatingValue(record);
 
@@ -123,6 +127,11 @@ public abstract class HeaderFromField<R extends ConnectRecord<R>> extends Abstra
         protected Object operatingValue(R record) {
             return record.key();
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends HeaderFromField<R> {
@@ -134,6 +143,11 @@ public abstract class HeaderFromField<R extends ConnectRecord<R>> extends Abstra
         @Override
         protected Object operatingValue(R record) {
             return record.value();
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }

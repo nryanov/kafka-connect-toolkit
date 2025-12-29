@@ -64,10 +64,6 @@ public abstract class BytesToString<R extends ConnectRecord<R>> extends Abstract
     }
 
     protected Schema applyMappingToSchema(String field, Schema source) {
-        if (source == null) {
-            return null;
-        }
-
         return switch (source.type()) {
             case ARRAY -> {
                 var mappedSchema = applyMappingToSchema(field, source.valueSchema());
@@ -159,6 +155,11 @@ public abstract class BytesToString<R extends ConnectRecord<R>> extends Abstract
         protected Schema keySchema(R record) {
             return applyMappingToSchema("", record.keySchema());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends BytesToString<R> {
@@ -170,6 +171,11 @@ public abstract class BytesToString<R extends ConnectRecord<R>> extends Abstract
         @Override
         protected Object value(R record, Schema updatedSchema) {
             return copyValuesToNewSchema("", record.valueSchema(), updatedSchema, record.value());
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }
