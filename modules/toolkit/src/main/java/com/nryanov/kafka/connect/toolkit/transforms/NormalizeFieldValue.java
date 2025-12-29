@@ -130,12 +130,22 @@ public abstract class NormalizeFieldValue<R extends ConnectRecord<R>> extends Ab
         protected Object key(R record, Schema updatedSchema) {
             return applyMappings(record.keySchema(), record.key());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends NormalizeFieldValue<R> {
         @Override
         protected Object value(R record, Schema updatedSchema) {
             return applyMappings(record.valueSchema(), record.value());
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }

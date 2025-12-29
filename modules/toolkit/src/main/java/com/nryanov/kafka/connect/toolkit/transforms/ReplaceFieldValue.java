@@ -171,12 +171,22 @@ public abstract class ReplaceFieldValue<R extends ConnectRecord<R>> extends Abst
         protected Object key(R record, Schema updatedSchema) {
             return applyReplacements("", record.keySchema(), record.key());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends ReplaceFieldValue<R> {
         @Override
         protected Object value(R record, Schema updatedSchema) {
             return applyReplacements("", record.valueSchema(), record.value());
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }

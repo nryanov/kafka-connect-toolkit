@@ -178,12 +178,22 @@ public abstract class CardMask<R extends ConnectRecord<R>> extends AbstractBaseT
         protected Object key(R record, Schema updatedSchema) {
             return applyReplacements("", record.keySchema(), record.key());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends CardMask<R> {
         @Override
         protected Object value(R record, Schema updatedSchema) {
             return applyReplacements("", record.valueSchema(), record.value());
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }

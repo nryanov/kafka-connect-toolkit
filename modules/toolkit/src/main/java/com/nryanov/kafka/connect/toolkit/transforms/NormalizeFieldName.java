@@ -51,10 +51,6 @@ public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends Abs
     }
 
     protected Schema applyMappingToSchema(Schema source) {
-        if (source == null) {
-            return null;
-        }
-
         return switch (source.type()) {
             case ARRAY -> {
                 var mappedSchema = applyMappingToSchema(source.valueSchema());
@@ -130,6 +126,11 @@ public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends Abs
         protected Schema keySchema(R record) {
             return applyMappingToSchema(record.keySchema());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends NormalizeFieldName<R> {
@@ -141,6 +142,11 @@ public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends Abs
         @Override
         protected Schema valueSchema(R record) {
             return applyMappingToSchema(record.valueSchema());
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }

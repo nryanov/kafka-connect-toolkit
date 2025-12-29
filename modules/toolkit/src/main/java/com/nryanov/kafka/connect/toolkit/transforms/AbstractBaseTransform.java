@@ -29,6 +29,10 @@ public abstract class AbstractBaseTransform<R extends ConnectRecord<R>> implemen
             return null;
         }
 
+        if (!shouldProcess(record)) {
+            return record;
+        }
+
         var updatedKeySchema = keySchema(record);
         var updatedKey = key(record, updatedKeySchema);
 
@@ -62,7 +66,7 @@ public abstract class AbstractBaseTransform<R extends ConnectRecord<R>> implemen
         return record.valueSchema();
     }
 
-    protected boolean requireShema() {
+    protected boolean shouldProcess(R record) {
         return true;
     }
 }

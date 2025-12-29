@@ -171,6 +171,10 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBas
                 return null;
             }
 
+            if (!shouldProcess(record)) {
+                return record;
+            }
+
             var initialParentPath = "";
 
             var schemaPatch = extractSchemaPatch(initialParentPath, record.keySchema());
@@ -188,6 +192,11 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBas
                     record.timestamp()
             );
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null && record.valueSchema() != null;
+        }
     }
 
     public static class ValueToKey<R extends ConnectRecord<R>> extends CopyFromTo<R> {
@@ -195,6 +204,10 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBas
         public R apply(R record) {
             if (record == null) {
                 return null;
+            }
+
+            if (!shouldProcess(record)) {
+                return record;
             }
 
             var initialParentPath = "";
@@ -213,6 +226,11 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBas
                     record.value(),
                     record.timestamp()
             );
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null && record.valueSchema() != null;
         }
     }
 }

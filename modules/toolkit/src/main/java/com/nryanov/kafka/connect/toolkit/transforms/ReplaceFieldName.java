@@ -88,10 +88,6 @@ public abstract class ReplaceFieldName<R extends ConnectRecord<R>> extends Abstr
     }
 
     protected Schema applyMappingToSchema(String parent, Schema source) {
-        if (source == null) {
-            return null;
-        }
-
         return switch (source.type()) {
             case ARRAY -> {
                 var mappedSchema = applyMappingToSchema(parent, source.valueSchema());
@@ -180,6 +176,11 @@ public abstract class ReplaceFieldName<R extends ConnectRecord<R>> extends Abstr
         protected Schema keySchema(R record) {
             return applyMappingToSchema("", record.keySchema());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends ReplaceFieldName<R> {
@@ -191,6 +192,11 @@ public abstract class ReplaceFieldName<R extends ConnectRecord<R>> extends Abstr
         @Override
         protected Schema valueSchema(R record) {
             return applyMappingToSchema("", record.valueSchema());
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }

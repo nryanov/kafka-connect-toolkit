@@ -113,12 +113,22 @@ public abstract class StringToHash<R extends ConnectRecord<R>> extends AbstractB
         protected Object key(R record, Schema updatedSchema) {
             return copyPayload("", record.keySchema(), record.key());
         }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.keySchema() != null;
+        }
     }
 
     public static class Value<R extends ConnectRecord<R>> extends StringToHash<R> {
         @Override
         protected Object value(R record, Schema updatedSchema) {
             return copyPayload("", record.valueSchema(), record.value());
+        }
+
+        @Override
+        protected boolean shouldProcess(R record) {
+            return record.valueSchema() != null;
         }
     }
 }
