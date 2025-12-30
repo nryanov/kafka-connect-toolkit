@@ -1,4 +1,7 @@
 # kafka-connect-toolkit
+- Build & setup
+  - [Build](#build)
+  - [Setup](#setup)
 - Toolkit
   - [DropSchemaless](#dropschemaless)
   - [HeaderFromField](#headerfromfield)
@@ -18,8 +21,24 @@
   - [NormalizeFieldValue](#normalizefieldvalue)
   - [NormalizeFieldName](#normalizefieldname)
 - Debezium
-  - [TimestampConverter](#timestampconverter)
+  - [TimestampConverter](#timestampconverter-postgres)
   - [SchemaRename](#schemarename)
+
+## Build & setup
+### Build
+To build jars use:
+```shell
+make package
+```
+
+Jars will be placed in:
+- toolkit: `./modules/toolkit/build/libs`
+- debezium: `./modules/debezium/build/libs`
+
+### Setup
+Built jars should be placed in each kafka-connect node.
+- Custom **transforms** should be placed in a path, defined in `plugin.path` ([more info](https://docs.confluent.io/platform/current/connect/transforms/custom.html))
+- Custom **converters** should be placed in each connector ([more info](https://debezium.io/documentation/reference/stable/development/converters.html))
 
 ## Toolkit
 ### DropSchemaless
@@ -312,38 +331,99 @@ transforms.normalizeFieldNameValue.case.to=UPPER_CAMEL
 
 ## Debezium
 
-### TimestampConverter
+### TimestampConverter (Postgres)
+The goal of this converter is to get predictable results from DB for temporal types especially for avro schemas.
+For example, initially these types will be generated for the next fields (for types with timezone initial TZ was GMT+3):
+
+| jdbc type                   | raw input           | output                      | output type (avro)                                                                     |
+|:----------------------------|:--------------------|:----------------------------|:---------------------------------------------------------------------------------------|
+| TIMESTAMP WITHOUT TIME ZONE | 2025-01-01 12:00:00 | 1735732800000000            | {"type":"long","connect.version":1,"connect.name":"io.debezium.time.MicroTimestamp"}   |
+| TIMESTAMP WITH TIME ZONE    | 2025-01-01 12:00:00 | 2025-01-01T09:00:00.000000Z | {"type":"string","connect.version":1,"connect.name":"io.debezium.time.ZonedTimestamp"} |
+| DATE                        | 2025-01-01          | 20089                       | {"type":"int","connect.version":1,"connect.name":"io.debezium.time.Date"}              |
+| TIME WITHOUT TIME ZONE      | 12:00:00            | 43200000000                 | {"type":"long","connect.version":1,"connect.name":"io.debezium.time.MicroTime"}        |
+| TIME WITH TIME ZONE         | 12:00:00            | 09:00:00Z                   | {"type":"string","connect.version":1,"connect.name":"io.debezium.time.ZonedTime"}      |
+
+As you can see, for avro there were no any logicalTypes. Also types **with timezone** returned as strings (which may be ok for some cases) while other types returned as some numerics.
+In the end it will affect how these values will be saved in the target system (like iceberg table, parquet/orc file, etc) and these fields will lost any info about its initial type (like that it was a temporal one).
+
+To overcome it, one possible solution is to use custom converter. By default, without any additional configs, it will generate the next results for the same types:
+
+| jdbc type                   | raw input           | output                  | output type (avro)                                                                                                                     |
+|:----------------------------|:--------------------|:------------------------|:---------------------------------------------------------------------------------------------------------------------------------------|
+| TIMESTAMP WITHOUT TIME ZONE | 2025-01-01 12:00:00 | 2025-01-01T12:00:00.000 | ["null","string"]                                                                                                                      |
+| TIMESTAMP WITH TIME ZONE    | 2025-01-01 12:00:00 | 1735722000000           | ["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}] |
+| DATE                        | 2025-01-01          | 20089                   | ["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Date","logicalType":"date"}]                   |
+| TIME WITHOUT TIME ZONE      | 12:00:00            | 12:00:00.000            | ["null","string"]                                                                                                                      |
+| TIME WITH TIME ZONE         | 12:00:00            | 32400000                | ["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]            |
+
+Using this converter without any additional settings, date, timestamptz and timetz will have concrete logicalType, which any avro library can handle.
+For other types plain string will be returned in some predefined format. Keep in mind, that this string representation of time **is not in UTC**, but it should be considered as **in some point in time in some local TZ**.
+The reason for it is that Postgres does not save any information about TZ which was used during save for types without timezone.
+
+But if you know exactly, that, e.g. timestamp and time were saved in GMT+3, then you can convert even these types to some logical counterpart:
+```properties
+converters=timestampConverter
+timestampConverter.type=com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter
+timestampConverter.time.shift=-03:00
+timestampConverter.timestamp.shift=-03:00
+timestampConverter.timestamp.type=TIMESTAMP
+timestampConverter.time.type=TIME
+```
+
+Using this configuration, you can:
+- Shift temporal types without timezone (and achieve UTC if needed)
+- Choose final type which should be used instead of string
+
+Finally, **timestamp** and **time** will be in like these:
+
+| jdbc type                   | raw input           | output        | output type (avro)                                                                                                                     |
+|:----------------------------|:--------------------|:--------------|:---------------------------------------------------------------------------------------------------------------------------------------|
+| TIMESTAMP WITHOUT TIME ZONE | 2025-01-01 12:00:00 | 1735722000000 | ["null",{"type":"long","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Timestamp","logicalType":"timestamp-millis"}] |
+| TIME WITHOUT TIME ZONE      | 12:00:00            | 32400000      | ["null",{"type":"int","connect.version":1,"connect.name":"org.apache.kafka.connect.data.Time","logicalType":"time-millis"}]            |
+
+If you want to return everything just like strings, you can set up for every jdbc-type final output as `STRING` and also configure pattern.
+
+Complete list of properties:
 ```properties
 converters=timestampConverter
 timestampConverter.type=com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter
 
 # optional properties
+## allows to shift timestamp and time 
+timestampConverter.time.shift=+03:00 # default: +00:00
+timestampConverter.timestamp.shift=+03:00 # default: +00:00
 
-timestampConverter.time.shift=+03:00 # default: UTC (+0)
-timestampConverter.timestamp.shift=+03:00 # default: UTC (+0)
-
+## allows to choose output type for timestamp without timezone
 timestampConverter.timestamp.type={STRING|TIMESTAMP} # default: STRING
 timestampConverter.timestamp.pattern={PATTERN -- when type=STRING} # default: yyyy-MM-dd'T'HH:mm:ss.SSS
 
+## allows to choose output type for timestamp with timezone
 timestampConverter.timestamptz.type={STRING|TIMESTAMP} # default: TIMESTAMP
 timestampConverter.timestamptz.pattern={PATTERN -- when type=STRING} # default: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
 
+## allows to choose output type for date
 timestampConverter.date.type={STRING|DATE} # default: DATE
 timestampConverter.date.pattern={PATTERN -- when type=STRING} # default: yyyy-MM-dd"
 
+## allows to choose output type for time without timezone
 timestampConverter.time.type={STRING|TIME} # default: STRING
 timestampConverter.time.pattern={PATTERN -- when type=STRING} # default: HH:mm:ss.SSS
 
+## allows to choose output type for time with timezone
 timestampConverter.timetz.type={STRING|TIME} # default: TIME
 timestampConverter.timetz.pattern={PATTERN -- when type=STRING} # default: HH:mm:ss.SSS'Z'
 ```
 
 ### SchemaRename
+For sharding and/or hypertable (timescaledb) debezium will generate different names for before/after schema even for the same tables (e.g. in different shards). 
+Different names will affect how new schemas will be saved in Schema Registry (SR) if compatibility type != **NONE**. 
+To overcome it, special transform should be used to re-name internal schemas:
+
 ```properties
 transforms=schemaRename
 transforms.schemaRename.type=com.nryanov.kafka.connect.toolkit.debezium.transforms.SchemaRename
 transforms.schemaRename.internal.name={new_name} # if not set then transform will not change any records
-
-# optional
-transforms.schemaRename.cache.size={cache_size} # default: 32
 ```
+
+In general, this transform should be used in pair with the default one [SetSchemaMetadata](https://docs.confluent.io/kafka-connectors/transforms/current/setschemametadata.html). In this case default transform will re-name outer schema, and this transform will re-name internal ones.
+It will allow you to control schema evolution and avoid errors during schemas update in source DB.
