@@ -43,24 +43,24 @@ Built jars should be placed in each kafka-connect node.
 ## Toolkit
 ### DropSchemaless
 Allow to drop record if key or value schema is null
-- transform for key: `com.nryanov.kafka.connect.toolkit.DropSchemaless$Key`
-- transform for value: `com.nryanov.kafka.connect.toolkit.DropSchemaless$Value`
+- transform for key: `com.nryanov.kafka.connect.toolkit.transforms.DropSchemaless$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.transforms.DropSchemaless$Value`
 
 ```properties
 transforms=dropSchemaless
-transforms.dropSchemaless.type=com.nryanov.kafka.connect.toolkit.DropSchemaless$Key
+transforms.dropSchemaless.type=com.nryanov.kafka.connect.toolkit.transforms.DropSchemaless$Key
 ```
 
 ### HeaderFromField
 Extract field(s) value and set it as header. 
 Nested fields are also allowed.
 
-- transform for key: `com.nryanov.kafka.connect.toolkit.HeaderFromField$Key`
-- transform for value: `com.nryanov.kafka.connect.toolkit.HeaderFromField$Value`
+- transform for key: `com.nryanov.kafka.connect.toolkit.transforms.HeaderFromField$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.transforms.HeaderFromField$Value`
 
 ```properties
 transforms=headerFromField
-transforms.headerFromField.type=com.nryanov.kafka.connect.toolkit.HeaderFromField$Key
+transforms.headerFromField.type=com.nryanov.kafka.connect.toolkit.transforms.HeaderFromField$Key
 transforms.headerFromField.mappings=field:header2,nested.field.name:header2
 ```
 
@@ -68,12 +68,12 @@ transforms.headerFromField.mappings=field:header2,nested.field.name:header2
 Cast field to string. Allowed input field types: `FLOAT64, FLOAT32, BOOLEAN, INT8, INT16, INT32, INT64` and their array alternatives.
 Nested fields are also allowed.
 
-- transform for key: `com.nryanov.kafka.connect.toolkit.CastToString$Key`
-- transform for value: `com.nryanov.kafka.connect.toolkit.CastToString$Value`
+- transform for key: `com.nryanov.kafka.connect.toolkit.transforms.CastToString$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.transforms.CastToString$Value`
 
 ```properties
 transforms=castToString
-transforms.castToString.type=com.nryanov.kafka.connect.toolkit.CastToString$Key
+transforms.castToString.type=com.nryanov.kafka.connect.toolkit.transforms.CastToString$Key
 transforms.castToString.fields=field,array.nested_field,struct.nested_level.nested_field
 ```
 
@@ -85,12 +85,12 @@ Replace string values by it's calculated hash value in hex format. Allowed hash 
 
 Input field must be a type of string (or array of strings). Nested fields are also allowed.
 
-- transform for key: `com.nryanov.kafka.connect.toolkit.InsertHash$Key`
-- transform for value: `com.nryanov.kafka.connect.toolkit.InsertHash$Value`
+- transform for key: `com.nryanov.kafka.connect.toolkit.transforms.InsertHash$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.transforms.InsertHash$Value`
 
 ```properties
 transforms=stringToHash
-transforms.stringToHash.type=com.nryanov.kafka.connect.toolkit.StringToHash$Key
+transforms.stringToHash.type=com.nryanov.kafka.connect.toolkit.transforms.StringToHash$Key
 transforms.stringToHash.fields=field:md5,array.nested_field:sha1,struct.nested_level.nested_field:sha256
 ```
 
@@ -102,12 +102,12 @@ Calculate hash value from selected field and insert the result as a new field. A
 
 Input field must be a type of string.
 
-- transform for key: `com.nryanov.kafka.connect.toolkit.InsertHash$Key`
-- transform for value: `com.nryanov.kafka.connect.toolkit.InsertHash$Value`
+- transform for key: `com.nryanov.kafka.connect.toolkit.transforms.InsertHash$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.transforms.InsertHash$Value`
 
 ```properties
 transforms=insertHash
-transforms.insertHash.type=com.nryanov.kafka.connect.toolkit.InsertHash$Key
+transforms.insertHash.type=com.nryanov.kafka.connect.toolkit.transforms.InsertHash$Key
 
 transforms.insertHash.input.fields={input field. may be nested}
 transforms.insertHash.output.field={output field name}
@@ -118,12 +118,12 @@ transforms.insertHash.algorithm={algorithm} # default: md5
 Concat selected fields in the new single optional string field. Allow to concat nested fields (in arrays, structs). 
 Only leaf fields are supported. If non-leaf field is selected, then it will be considered as NULL.
 
-- transform for key: `com.nryanov.kafka.connect.toolkit.ConcatFields$Key`
-- transform for value: `com.nryanov.kafka.connect.toolkit.ConcatFields$Value`
+- transform for key: `com.nryanov.kafka.connect.toolkit.transforms.ConcatFields$Key`
+- transform for value: `com.nryanov.kafka.connect.toolkit.transforms.ConcatFields$Value`
 
 ```properties
 transforms=concatKeyFields
-transforms.concatKeyFields.type=com.nryanov.kafka.connect.toolkit.ConcatFields$Key
+transforms.concatKeyFields.type=com.nryanov.kafka.connect.toolkit.transforms.ConcatFields$Key
 
 transforms.concatKeyFields.input.fields={comma separated fields}
 transforms.concatKeyFields.input.fields.null-replacement={replacement for null values} # default: ""
@@ -136,8 +136,8 @@ Set value or key as null (payload & schema)
 
 ```properties
 transforms=setNullKey,setNullValue
-transforms.setNullKey.type=com.nryanov.kafka.connect.toolkit.SetNull$Key
-transforms.setNullValue.type=com.nryanov.kafka.connect.toolkit.SetNull$Value
+transforms.setNullKey.type=com.nryanov.kafka.connect.toolkit.transforms.SetNull$Key
+transforms.setNullValue.type=com.nryanov.kafka.connect.toolkit.transforms.SetNull$Value
 ```
 
 ### CopyFromTo
@@ -150,11 +150,11 @@ If field should be copied (e.g. leaf field of nested struct -> nested struct fie
 
 ```properties
 transforms=keyToValue,valueToKey
-transforms.keyToValue.type=com.nryanov.kafka.connect.toolkit.CopyFrom$KeyToValue
+transforms.keyToValue.type=com.nryanov.kafka.connect.toolkit.transforms.CopyFrom$KeyToValue
 transforms.keyToValue.fields=field1,field2,nested.inner
 transforms.keyToValue.suffix=_key
 
-transforms.valueToKey.type=com.nryanov.kafka.connect.toolkit.CopyFrom$ValueToKey
+transforms.valueToKey.type=com.nryanov.kafka.connect.toolkit.transforms.CopyFrom$ValueToKey
 transforms.valueToKey.fields=*
 ```
 
@@ -162,7 +162,7 @@ transforms.valueToKey.fields=*
 Swap key and value of record
 ```properties
 transforms=swapValueAndKey
-transforms.swapValueAndKey.type=com.nryanov.kafka.connect.toolkit.SwapValueAndKey
+transforms.swapValueAndKey.type=com.nryanov.kafka.connect.toolkit.transforms.SwapValueAndKey
 ```
 
 ### BytesToBase64
@@ -173,10 +173,10 @@ Encode bytes into base64 string. This transform allows:
 ```properties
 transforms=bytesToBase64Key,bytesToBase64Value
 
-transforms.bytesToBase64Key.type=com.nryanov.kafka.connect.toolkit.BytesToBase64$Key
+transforms.bytesToBase64Key.type=com.nryanov.kafka.connect.toolkit.transforms.BytesToBase64$Key
 transforms.bytesToBase64Key.fields=field,array.inner,struct.nested.inner
 
-transforms.bytesToBase64Value.type=com.nryanov.kafka.connect.toolkit.BytesToBase64$Value
+transforms.bytesToBase64Value.type=com.nryanov.kafka.connect.toolkit.transforms.BytesToBase64$Value
 transforms.bytesToBase64Value.fields=*
 ```
 
@@ -190,11 +190,11 @@ This transform allows:
 ```properties
 transforms=bytesToStringKey,bytesToStringValue
 
-transforms.bytesToStringKey.type=com.nryanov.kafka.connect.toolkit.BytesToString$Key
+transforms.bytesToStringKey.type=com.nryanov.kafka.connect.toolkit.transforms.BytesToString$Key
 transforms.bytesToStringKey.fields=field,array.inner,struct.nested.inner
 transforms.bytesToStringKey.charset=WIN1251
 
-transforms.bytesToStringValue.type=com.nryanov.kafka.connect.toolkit.BytesToString$Value
+transforms.bytesToStringValue.type=com.nryanov.kafka.connect.toolkit.transforms.BytesToString$Value
 transforms.bytesToStringValue.fields=*
 ```
 
@@ -224,12 +224,12 @@ This transform allows:
     - VALUE -- set desired value for scale if current scale is negative
 
 Transforms:
-- Key: `com.nryanov.kafka.connect.toolkit.DecimalAdjustScaleAndPrecision$Key`
-- Value: `com.nryanov.kafka.connect.toolkit.DecimalAdjustScaleAndPrecision$Value`
+- Key: `com.nryanov.kafka.connect.toolkit.transforms.DecimalAdjustScaleAndPrecision$Key`
+- Value: `com.nryanov.kafka.connect.toolkit.transforms.DecimalAdjustScaleAndPrecision$Value`
 
 ```properties
 transforms=decimalAdjustScaleAndPrecision
-transforms.decimalAdjustScaleAndPrecision.type=com.nryanov.kafka.connect.toolkit.DecimalAdjustScaleAndPrecision$Key
+transforms.decimalAdjustScaleAndPrecision.type=com.nryanov.kafka.connect.toolkit.transforms.DecimalAdjustScaleAndPrecision$Key
 
 transforms.decimalAdjustScaleAndPrecision.fields={comma-separated list of fields in key-part | *}
 transforms.decimalAdjustScaleAndPrecision.precision.value={target precision value} # default: null
@@ -248,12 +248,12 @@ To set up this transform in a minimum configuration you should set field(s) of w
 Nested fields are also supported.
 
 Transforms:
-- Key: `com.nryanov.kafka.connect.toolkit.CardMask$Key`
-- Value: `com.nryanov.kafka.connect.toolkit.CardMask$Value`
+- Key: `com.nryanov.kafka.connect.toolkit.transforms.CardMask$Key`
+- Value: `com.nryanov.kafka.connect.toolkit.transforms.CardMask$Value`
 
 ```properties
 transforms=cardMaskKey
-transforms.cardMaskKey.type=com.nryanov.kafka.connect.toolkit.CardMask$Key
+transforms.cardMaskKey.type=com.nryanov.kafka.connect.toolkit.transforms.CardMask$Key
 
 transforms.cardMaskKey.fields={comma-separated list of fields in key-part}
 transforms.cardMaskKey.masking.expose-first-count={number of digits in the beginning which should be exposed in masked card number} # default: 4
@@ -269,12 +269,12 @@ This transform allow to rename, exclude/include specified fields includes the ne
 ```properties
 transforms=replaceFieldNameKey,replaceFieldNameValue
 # key
-transforms.replaceFieldNameKey.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldName$Key
+transforms.replaceFieldNameKey.type=com.nryanov.kafka.connect.toolkit.transforms.ReplaceFieldName$Key
 transforms.replaceFieldNameKey.exclude=a,b.inner1.inner2
 transforms.replaceFieldNameKey.include=c,d.inner1
 transforms.replaceFieldNameKey.replace=c:renamed_c,d.inner1.inner2:renamed_inner_field
 # value
-transforms.replaceFieldNameValue.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldName$Value
+transforms.replaceFieldNameValue.type=com.nryanov.kafka.connect.toolkit.transforms.ReplaceFieldName$Value
 transforms.replaceFieldNameValue.exclude=a,b.inner1.inner2
 transforms.replaceFieldNameValue.include=c,d.inner1
 transforms.replaceFieldNameValue.replace=c:renamed_c,d.inner1.inner2:renamed_inner_field
@@ -287,10 +287,10 @@ This transform allow to replace field values (including the nested ones).
 Format of settings: `{field_name}:{replacement}`. If replacement couldn't be applied, then default value of type will be used.
 ```properties
 transforms=replaceFieldValueInKey,replaceFieldValueInValue
-transforms.replaceFieldValueInKey.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldValue$Key
+transforms.replaceFieldValueInKey.type=com.nryanov.kafka.connect.toolkit.transforms.ReplaceFieldValue$Key
 transforms.replaceFieldValueInKey.fields=a.b.c:replacement,d:replacement
 
-transforms.replaceFieldValueInValue.type=com.nryanov.kafka.connect.toolkit.ReplaceFieldValue$Value
+transforms.replaceFieldValueInValue.type=com.nryanov.kafka.connect.toolkit.transforms.ReplaceFieldValue$Value
 transforms.replaceFieldValueInValue.fields=a:replacement
 ```
 
@@ -302,10 +302,10 @@ General format of configs is: `{fieldName}:{from}:{to}`
 ```properties
 transforms=normalizeFieldValueInKey,normalizeFieldValueInValue
 
-transforms.normalizeFieldValueInKey.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldValue$Key
+transforms.normalizeFieldValueInKey.type=com.nryanov.kafka.connect.toolkit.transforms.NormalizeFieldValue$Key
 transforms.normalizeFieldValueInKey.fields=a:LOWER_HYPHEN:LOWER_UNDERSCORE,b:LOWER_CAMEL:UPPER_CAMEL,a.b.c:UPPER_UNDERSCORE:UPPER_CAMEL
 
-transforms.normalizeFieldValueInValue.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldValue$Value
+transforms.normalizeFieldValueInValue.type=com.nryanov.kafka.connect.toolkit.transforms.NormalizeFieldValue$Value
 transforms.normalizeFieldValueInValue.fields=a.b.c.d:UPPER_CAMEL:UPPER_UNDERSCORE
 ```
 
@@ -320,11 +320,11 @@ Re-format schema field names to specified format. Allowed values:
 ```properties
 transforms=normalizeFieldNameKey,normalizeFieldNameValue
 
-transforms.normalizeFieldNameKey.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldName$Key
+transforms.normalizeFieldNameKey.type=com.nryanov.kafka.connect.toolkit.transforms.NormalizeFieldName$Key
 transforms.normalizeFieldNameKey.case.from=LOWER_HYPHEN
 transforms.normalizeFieldNameKey.case.to=LOWER_UNDERSCORE
 
-transforms.normalizeFieldNameValue.type=com.nryanov.kafka.connect.toolkit.NormalizeFieldName$Value
+transforms.normalizeFieldNameValue.type=com.nryanov.kafka.connect.toolkit.transforms.NormalizeFieldName$Value
 transforms.normalizeFieldNameValue.case.from=UPPER_UNDERSCORE
 transforms.normalizeFieldNameValue.case.to=UPPER_CAMEL
 ```
