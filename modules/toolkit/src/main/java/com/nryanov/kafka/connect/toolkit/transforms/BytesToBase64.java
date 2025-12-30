@@ -143,7 +143,7 @@ public abstract class BytesToBase64<R extends ConnectRecord<R>> extends Cacheabl
 
         @Override
         protected Schema keySchema(R record) {
-            return applyMappingToSchema("", record.keySchema());
+            return getOrCompute(record.keySchema(), () -> applyMappingToSchema("", record.keySchema()));
         }
 
         @Override
@@ -155,7 +155,7 @@ public abstract class BytesToBase64<R extends ConnectRecord<R>> extends Cacheabl
     public static class Value<R extends ConnectRecord<R>> extends BytesToBase64<R> {
         @Override
         protected Schema valueSchema(R record) {
-            return applyMappingToSchema("", record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> applyMappingToSchema("", record.valueSchema()));
         }
 
         @Override

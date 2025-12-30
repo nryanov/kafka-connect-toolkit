@@ -1,7 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.google.common.base.CaseFormat;
-import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
 import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -16,7 +16,7 @@ import java.util.Objects;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String INITIAL_CASE = "case.initial";
     private final static String TARGET_CASE = "case.target";
     private final static ConfigDef CONFIG_DEF =

@@ -1,6 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
 import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.HashAlgorithm;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.Hex;
@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class InsertHash<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String INPUT_FIELD = "input.field";
     private final static String HASH_ALGORITHM = "algorithm";
     private final static String OUTPUT_FIELD = "output.field";

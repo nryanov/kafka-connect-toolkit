@@ -1,6 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.masking.CardMaskingConfig;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.masking.CardMaskingService;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -16,7 +16,7 @@ import java.util.Set;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class CardMask<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class CardMask<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String FIELDS = "fields";
     private final static String EXPOSE_FIRST_COUNT = "masking.expose-first-count";
     private final static String EXPOSE_LAST_COUNT = "masking.expose-last-count";

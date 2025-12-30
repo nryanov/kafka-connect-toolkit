@@ -1,6 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
 import com.nryanov.kafka.connect.toolkit.core.common.ConfigParser;
 import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import com.nryanov.kafka.connect.toolkit.core.model.FieldFilter;
@@ -17,7 +17,7 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class CastToString<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class CastToString<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String FIELDS = "fields";
 
     private final static ConfigDef CONFIG_DEF =

@@ -1,6 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
 import com.nryanov.kafka.connect.toolkit.core.common.ConfigParser;
 import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class ConcatFields<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String INPUT_FIELDS = "input.fields";
     private final static String INPUT_FIELDS_NULL_REPLACEMENT = "input.fields.null-replacement";
     private final static String OUTPUT_FIELD = "output.field";

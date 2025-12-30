@@ -1,6 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
 import com.nryanov.kafka.connect.toolkit.core.common.ConfigParser;
 import com.nryanov.kafka.connect.toolkit.core.model.FieldFilter;
 import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
@@ -21,7 +22,7 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     enum PrecisionMode {
         NONE, // do not change precision
         IF_NOT_SET, // change precision only if current precision is undefined

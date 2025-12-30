@@ -1,6 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
 import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import com.nryanov.kafka.connect.toolkit.core.trie.PrefixTrie;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -19,7 +19,7 @@ import static com.nryanov.kafka.connect.toolkit.core.common.ConfigParser.parseCo
 import static com.nryanov.kafka.connect.toolkit.core.common.ConfigParser.parseCommaSeparatedSingleValues;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class ReplaceFieldName<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class ReplaceFieldName<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String EXCLUDE = "exclude";
     private final static String REPLACE = "replace";
     private final static String INCLUDE = "include";
