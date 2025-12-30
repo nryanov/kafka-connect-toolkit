@@ -329,7 +329,7 @@ public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>>
 
         @Override
         protected Schema keySchema(R record) {
-            return applyMappingToSchema("", record.keySchema());
+            return getOrCompute(record.keySchema(), () -> applyMappingToSchema("", record.keySchema()));
         }
 
         @Override
@@ -341,7 +341,7 @@ public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>>
     public static class Value<R extends ConnectRecord<R>> extends DecimalAdjustScaleAndPrecision<R> {
         @Override
         protected Schema valueSchema(R record) {
-            return applyMappingToSchema("", record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> applyMappingToSchema("", record.valueSchema()));
         }
 
         @Override

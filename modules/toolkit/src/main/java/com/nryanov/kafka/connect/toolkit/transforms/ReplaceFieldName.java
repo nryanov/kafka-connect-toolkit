@@ -176,7 +176,7 @@ public abstract class ReplaceFieldName<R extends ConnectRecord<R>> extends Cache
 
         @Override
         protected Schema keySchema(R record) {
-            return applyMappingToSchema("", record.keySchema());
+            return getOrCompute(record.keySchema(), () -> applyMappingToSchema("", record.keySchema()));
         }
 
         @Override
@@ -193,7 +193,7 @@ public abstract class ReplaceFieldName<R extends ConnectRecord<R>> extends Cache
 
         @Override
         protected Schema valueSchema(R record) {
-            return applyMappingToSchema("", record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> applyMappingToSchema("", record.valueSchema()));
         }
 
         @Override

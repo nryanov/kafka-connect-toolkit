@@ -198,7 +198,7 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends Cacheable
 
         @Override
         protected Schema keySchema(R record) {
-            return addFieldToSchema(record.keySchema());
+            return getOrCompute(record.keySchema(), () -> addFieldToSchema(record.keySchema()));
         }
 
         @Override
@@ -223,7 +223,7 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends Cacheable
 
         @Override
         protected Schema valueSchema(R record) {
-            return addFieldToSchema(record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> addFieldToSchema(record.valueSchema()));
         }
 
         @Override

@@ -181,7 +181,7 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends CacheableTr
 
             var schemaPatch = extractSchemaPatch(initialParentPath, record.keySchema());
             var structPatch = copyValuesToNewSchema(initialParentPath, record.keySchema(), schemaPatch, record.key());
-            var mergedValueSchema = mergeSchemas(record.valueSchema(), schemaPatch);
+            var mergedValueSchema = getOrCompute(record.valueSchema(), () -> mergeSchemas(record.valueSchema(), schemaPatch));
             var mergedValueStruct = mergeStructs(mergedValueSchema, record.value(), structPatch);
 
             return record.newRecord(
@@ -216,7 +216,7 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends CacheableTr
 
             var schemaPatch = extractSchemaPatch(initialParentPath, record.valueSchema());
             var structPatch = copyValuesToNewSchema(initialParentPath, record.valueSchema(), schemaPatch, record.value());
-            var mergedKeySchema = mergeSchemas(record.keySchema(), schemaPatch);
+            var mergedKeySchema = getOrCompute(record.keySchema(), () -> mergeSchemas(record.keySchema(), schemaPatch));
             var mergedKeyStruct = mergeStructs(mergedKeySchema, record.key(), structPatch);
 
             return record.newRecord(

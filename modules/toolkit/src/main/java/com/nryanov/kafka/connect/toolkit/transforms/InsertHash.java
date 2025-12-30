@@ -158,7 +158,7 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends CacheableTr
 
         @Override
         protected Schema keySchema(R record) {
-            return addFieldToSchema(record.keySchema());
+            return getOrCompute(record.keySchema(), () -> addFieldToSchema(record.keySchema()));
         }
 
         @Override
@@ -170,7 +170,7 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends CacheableTr
     public static class Value<R extends ConnectRecord<R>> extends InsertHash<R> {
         @Override
         protected Schema valueSchema(R record) {
-            return addFieldToSchema(record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> addFieldToSchema(record.valueSchema()));
         }
 
         @Override
