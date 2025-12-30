@@ -1,7 +1,8 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
+import com.nryanov.kafka.connect.toolkit.core.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class ConcatFields<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String INPUT_FIELDS = "input.fields";
     private final static String INPUT_FIELDS_NULL_REPLACEMENT = "input.fields.null-replacement";
     private final static String OUTPUT_FIELD = "output.field";
@@ -69,6 +70,7 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractB
 
     @Override
     public final void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
         var fieldsRaw = config.getString(INPUT_FIELDS);
 
@@ -196,7 +198,7 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractB
 
         @Override
         protected Schema keySchema(R record) {
-            return addFieldToSchema(record.keySchema());
+            return getOrCompute(record.keySchema(), () -> addFieldToSchema(record.keySchema()));
         }
 
         @Override
@@ -221,7 +223,7 @@ public abstract class ConcatFields<R extends ConnectRecord<R>> extends AbstractB
 
         @Override
         protected Schema valueSchema(R record) {
-            return addFieldToSchema(record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> addFieldToSchema(record.valueSchema()));
         }
 
         @Override

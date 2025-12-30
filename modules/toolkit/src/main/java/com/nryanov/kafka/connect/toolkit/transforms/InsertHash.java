@@ -1,6 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
+import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.HashAlgorithm;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.Hex;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -20,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class InsertHash<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String INPUT_FIELD = "input.field";
     private final static String HASH_ALGORITHM = "algorithm";
     private final static String OUTPUT_FIELD = "output.field";
@@ -60,6 +61,7 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBas
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
         inputField = config.getString(INPUT_FIELD);
         outputField = config.getString(OUTPUT_FIELD);
@@ -156,7 +158,7 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBas
 
         @Override
         protected Schema keySchema(R record) {
-            return addFieldToSchema(record.keySchema());
+            return getOrCompute(record.keySchema(), () -> addFieldToSchema(record.keySchema()));
         }
 
         @Override
@@ -168,7 +170,7 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBas
     public static class Value<R extends ConnectRecord<R>> extends InsertHash<R> {
         @Override
         protected Schema valueSchema(R record) {
-            return addFieldToSchema(record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> addFieldToSchema(record.valueSchema()));
         }
 
         @Override

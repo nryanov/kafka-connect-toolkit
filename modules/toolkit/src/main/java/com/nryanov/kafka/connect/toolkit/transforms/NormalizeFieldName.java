@@ -1,7 +1,8 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
 import com.google.common.base.CaseFormat;
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
+import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -15,7 +16,7 @@ import java.util.Objects;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String INITIAL_CASE = "case.initial";
     private final static String TARGET_CASE = "case.target";
     private final static ConfigDef CONFIG_DEF =
@@ -45,6 +46,7 @@ public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends Abs
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
         initialCase = CaseFormat.valueOf(Objects.requireNonNull(config.getString(INITIAL_CASE), "Empty case.initial config"));
         targetCase = CaseFormat.valueOf(Objects.requireNonNull(config.getString(TARGET_CASE), "Empty case.target config"));
@@ -124,7 +126,7 @@ public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends Abs
 
         @Override
         protected Schema keySchema(R record) {
-            return applyMappingToSchema(record.keySchema());
+            return getOrCompute(record.keySchema(), () -> applyMappingToSchema(record.keySchema()));
         }
 
         @Override
@@ -141,7 +143,7 @@ public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends Abs
 
         @Override
         protected Schema valueSchema(R record) {
-            return applyMappingToSchema(record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> applyMappingToSchema(record.valueSchema()));
         }
 
         @Override

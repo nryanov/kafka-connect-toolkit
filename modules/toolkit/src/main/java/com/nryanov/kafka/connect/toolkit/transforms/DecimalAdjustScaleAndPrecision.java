@@ -1,8 +1,10 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.domain.model.FieldFilter;
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
+import com.nryanov.kafka.connect.toolkit.core.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.core.model.FieldFilter;
+import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -20,7 +22,7 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     enum PrecisionMode {
         NONE, // do not change precision
         IF_NOT_SET, // change precision only if current precision is undefined
@@ -141,6 +143,7 @@ public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>>
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
         var keyFieldsRaw = config.getString(FIELDS);
@@ -326,7 +329,7 @@ public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>>
 
         @Override
         protected Schema keySchema(R record) {
-            return applyMappingToSchema("", record.keySchema());
+            return getOrCompute(record.keySchema(), () -> applyMappingToSchema("", record.keySchema()));
         }
 
         @Override
@@ -338,7 +341,7 @@ public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>>
     public static class Value<R extends ConnectRecord<R>> extends DecimalAdjustScaleAndPrecision<R> {
         @Override
         protected Schema valueSchema(R record) {
-            return applyMappingToSchema("", record.valueSchema());
+            return getOrCompute(record.valueSchema(), () -> applyMappingToSchema("", record.valueSchema()));
         }
 
         @Override

@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 

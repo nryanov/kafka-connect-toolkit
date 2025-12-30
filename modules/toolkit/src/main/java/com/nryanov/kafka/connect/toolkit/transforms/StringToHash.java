@@ -1,6 +1,7 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.common.ConfigParser;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.HashAlgorithm;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.hash.Hex;
 import org.apache.kafka.common.config.AbstractConfig;

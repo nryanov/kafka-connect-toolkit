@@ -1,8 +1,9 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.ConfigParser;
-import com.nryanov.kafka.connect.toolkit.transforms.domain.model.FieldFilter;
-import com.nryanov.kafka.connect.toolkit.transforms.domain.common.SchemaCopyUtil;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
+import com.nryanov.kafka.connect.toolkit.core.common.ConfigParser;
+import com.nryanov.kafka.connect.toolkit.core.model.FieldFilter;
+import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -17,7 +18,7 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class CopyFromTo<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String FIELDS = "fields";
     private final static String DEFAULT_SUFFIX = "suffix";
 
@@ -49,6 +50,7 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBas
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
         var mappingsRaw = config.getString(FIELDS);
 
@@ -179,7 +181,7 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBas
 
             var schemaPatch = extractSchemaPatch(initialParentPath, record.keySchema());
             var structPatch = copyValuesToNewSchema(initialParentPath, record.keySchema(), schemaPatch, record.key());
-            var mergedValueSchema = mergeSchemas(record.valueSchema(), schemaPatch);
+            var mergedValueSchema = getOrCompute(record.valueSchema(), () -> mergeSchemas(record.valueSchema(), schemaPatch));
             var mergedValueStruct = mergeStructs(mergedValueSchema, record.value(), structPatch);
 
             return record.newRecord(
@@ -214,7 +216,7 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBas
 
             var schemaPatch = extractSchemaPatch(initialParentPath, record.valueSchema());
             var structPatch = copyValuesToNewSchema(initialParentPath, record.valueSchema(), schemaPatch, record.value());
-            var mergedKeySchema = mergeSchemas(record.keySchema(), schemaPatch);
+            var mergedKeySchema = getOrCompute(record.keySchema(), () -> mergeSchemas(record.keySchema(), schemaPatch));
             var mergedKeyStruct = mergeStructs(mergedKeySchema, record.key(), structPatch);
 
             return record.newRecord(

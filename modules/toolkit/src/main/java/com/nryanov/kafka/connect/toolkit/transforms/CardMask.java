@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.masking.CardMaskingConfig;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.masking.CardMaskingService;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -82,6 +83,7 @@ public abstract class CardMask<R extends ConnectRecord<R>> extends AbstractBaseT
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
         var fieldsRaw = config.getList(FIELDS);
