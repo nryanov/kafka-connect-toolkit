@@ -46,6 +46,7 @@ public abstract class NormalizeFieldName<R extends ConnectRecord<R>> extends Abs
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
         initialCase = CaseFormat.valueOf(Objects.requireNonNull(config.getString(INITIAL_CASE), "Empty case.initial config"));
         targetCase = CaseFormat.valueOf(Objects.requireNonNull(config.getString(TARGET_CASE), "Empty case.target config"));

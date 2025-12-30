@@ -1,6 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
-import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
+import com.nryanov.kafka.connect.toolkit.core.CacheableTransform;
 import com.nryanov.kafka.connect.toolkit.core.common.ConfigParser;
 import com.nryanov.kafka.connect.toolkit.core.model.FieldFilter;
 import com.nryanov.kafka.connect.toolkit.core.common.SchemaCopyUtil;
@@ -18,7 +18,7 @@ import java.util.Map;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class BytesToString<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {
+public abstract class BytesToString<R extends ConnectRecord<R>> extends CacheableTransform<R> {
     private final static String FIELDS = "fields";
     private final static String CHARSET = "charset";
 
@@ -49,6 +49,7 @@ public abstract class BytesToString<R extends ConnectRecord<R>> extends Abstract
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
         var fieldsRaw = config.getString(FIELDS);

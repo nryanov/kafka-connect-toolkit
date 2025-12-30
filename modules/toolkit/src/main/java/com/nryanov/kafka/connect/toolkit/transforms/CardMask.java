@@ -83,6 +83,7 @@ public abstract class CardMask<R extends ConnectRecord<R>> extends AbstractBaseT
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
         var fieldsRaw = config.getList(FIELDS);

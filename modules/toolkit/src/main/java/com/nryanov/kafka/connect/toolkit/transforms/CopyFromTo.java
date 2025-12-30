@@ -50,6 +50,7 @@ public abstract class CopyFromTo<R extends ConnectRecord<R>> extends AbstractBas
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
         var mappingsRaw = config.getString(FIELDS);
 

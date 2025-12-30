@@ -61,6 +61,7 @@ public abstract class InsertHash<R extends ConnectRecord<R>> extends AbstractBas
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
         inputField = config.getString(INPUT_FIELD);
         outputField = config.getString(OUTPUT_FIELD);

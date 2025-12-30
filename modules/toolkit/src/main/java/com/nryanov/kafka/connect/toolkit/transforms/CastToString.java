@@ -39,6 +39,7 @@ public abstract class CastToString<R extends ConnectRecord<R>> extends AbstractB
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
         var fieldsRaw = config.getString(FIELDS);

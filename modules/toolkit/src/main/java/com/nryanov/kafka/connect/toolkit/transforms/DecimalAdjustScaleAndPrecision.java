@@ -142,6 +142,7 @@ public abstract class DecimalAdjustScaleAndPrecision<R extends ConnectRecord<R>>
 
     @Override
     public void configure(Map<String, ?> configs) {
+        super.configure(configs);
         var config = new AbstractConfig(CONFIG_DEF, configs);
 
         var keyFieldsRaw = config.getString(FIELDS);
