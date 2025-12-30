@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.transforms.domain.common;
+package com.nryanov.kafka.connect.toolkit.core.common;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;

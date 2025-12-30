@@ -1,6 +1,6 @@
-package com.nryanov.kafka.connect.toolkit.transforms.domain.model;
+package com.nryanov.kafka.connect.toolkit.core.model;
 
-import com.nryanov.kafka.connect.toolkit.transforms.domain.trie.PrefixTrie;
+import com.nryanov.kafka.connect.toolkit.core.trie.PrefixTrie;
 
 import java.util.Collection;
 

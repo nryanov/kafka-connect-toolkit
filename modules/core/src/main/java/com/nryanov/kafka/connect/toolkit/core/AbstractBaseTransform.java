@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.transforms;
+package com.nryanov.kafka.connect.toolkit.core;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;

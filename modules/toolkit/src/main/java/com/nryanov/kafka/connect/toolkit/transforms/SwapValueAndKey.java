@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
 import org.apache.kafka.connect.connector.ConnectRecord;
 
 public class SwapValueAndKey<R extends ConnectRecord<R>> extends AbstractBaseTransform<R> {

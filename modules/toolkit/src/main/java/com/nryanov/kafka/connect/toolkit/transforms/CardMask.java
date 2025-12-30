@@ -1,5 +1,6 @@
 package com.nryanov.kafka.connect.toolkit.transforms;
 
+import com.nryanov.kafka.connect.toolkit.core.AbstractBaseTransform;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.masking.CardMaskingConfig;
 import com.nryanov.kafka.connect.toolkit.transforms.domain.masking.CardMaskingService;
 import org.apache.kafka.common.config.AbstractConfig;
