@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.debezium.converters;
+package com.nryanov.kafka.connect.toolkit.debezium.postgres.converters;
 
 import com.nryanov.kafka.connect.toolkit.fixtures.kafka_connect.KafkaConnectFixtureContainer;
 import com.nryanov.kafka.connect.toolkit.fixtures.kafka_connect.helper.KafkaConnectDebeziumHelper;
@@ -20,7 +20,7 @@ public class TimestampConverterTest {
 
     @BeforeAll
     public static void setup() {
-        kafkaConnect.bindConverterJarToPostgresConnector("build/libs", "debezium.jar");
+        kafkaConnect.bindConverterJarToPostgresConnector("build/libs", "debezium-postgres.jar");
         kafkaConnect.start();
         debeziumHelper = new KafkaConnectDebeziumHelper(kafkaConnect);
 
@@ -119,7 +119,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
         });
         insertData(table, inputValue);
         conditionallyTriggerSnapshot(snapshot, topic, table);
@@ -158,7 +158,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
             connector.with("timestampConverter.timestamp.shift", "+06:00");
         });
         insertData(table, inputValue);
@@ -198,7 +198,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
         });
         insertData(table, inputValue);
         conditionallyTriggerSnapshot(snapshot, topic, table);
@@ -237,7 +237,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
         });
         insertData(table, inputValue);
         conditionallyTriggerSnapshot(snapshot, topic, table);
@@ -276,7 +276,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
         });
         insertData(table, inputValue);
         conditionallyTriggerSnapshot(snapshot, topic, table);
@@ -315,7 +315,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
             connector.with("timestampConverter.time.shift", "-04:00");
         });
         insertData(table, inputValue);
@@ -355,7 +355,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
         });
         insertData(table, inputValue);
         conditionallyTriggerSnapshot(snapshot, topic, table);
@@ -397,7 +397,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
             connector.with("timestampConverter.timestamp.type", "TIMESTAMP");
             connector.with("timestampConverter.timestamptz.type", "STRING");
             connector.with("timestampConverter.date.type", "STRING");
@@ -438,7 +438,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
             connector.with("timestampConverter.timestamp.pattern", "yyyy-MM-dd'T'HH:mm:ss'Z'");
 
             connector.with("timestampConverter.timestamptz.type", "STRING");
@@ -496,7 +496,7 @@ public class TimestampConverterTest {
         setupPublication(testCase, table, jdbcType, publication);
         debeziumHelper.setupPostgresDebeziumConnectorAvroFormat(CONNECTOR_NAME, publication, topicPrefix, connector -> {
             connector.with("converters", "timestampConverter");
-            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter");
+            connector.with("timestampConverter.type", "com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter");
         });
         insertData(table, inputValue);
 

@@ -363,7 +363,7 @@ The reason for it is that Postgres does not save any information about TZ which 
 But if you know exactly, that, e.g. timestamp and time were saved in GMT+3, then you can convert even these types to some logical counterpart:
 ```properties
 converters=timestampConverter
-timestampConverter.type=com.nryanov.kafka.connect.toolkit.debezium.converters.TimestampConverter
+timestampConverter.type=com.nryanov.kafka.connect.toolkit.debezium.postgres.converters.TimestampConverter
 timestampConverter.time.shift=-03:00
 timestampConverter.timestamp.shift=-03:00
 timestampConverter.timestamp.type=TIMESTAMP

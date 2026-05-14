@@ -10,5 +10,6 @@ include(":modules:fixtures:fixtures-schema-registry")
 
 include(":modules:toolkit")
 include(":modules:debezium")
+include(":modules:debezium:debezium-postgres")
 
 include(":modules:core")

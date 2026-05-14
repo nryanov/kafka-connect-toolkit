@@ -1,4 +1,4 @@
-package com.nryanov.kafka.connect.toolkit.debezium.converters;
+package com.nryanov.kafka.connect.toolkit.debezium.postgres.converters;
 
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
