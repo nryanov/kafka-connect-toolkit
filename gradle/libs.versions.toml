@@ -5,7 +5,7 @@ googleGuava = "33.5.0-jre"
 
 # test dependencies
 slfj4 = "2.0.17"
-junit = "5.12.2"
+junit = "6.1.0"
 postgresDriver = "42.7.8"
 jdbi = "3.53.0"
 agroal = "2.8"
