@@ -4,7 +4,7 @@ debezium = "3.3.1.Final"
 googleGuava = "33.5.0-jre"
 
 # test dependencies
-slfj4 = "2.0.17"
+slfj4 = "2.0.18"
 junit = "6.1.0"
 postgresDriver = "42.7.11"
 jdbi = "3.53.0"
