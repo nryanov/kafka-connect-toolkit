@@ -5,3 +5,6 @@ build/
 target/
 *.iml
 .idea/
+site/
+.venv-docs/
+stash/
