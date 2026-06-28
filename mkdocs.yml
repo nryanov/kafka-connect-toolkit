@@ -1,0 +1,54 @@
+site_name: kafka-connect-toolkit
+site_url: https://nryanov.github.io/kafka-connect-toolkit/
+repo_url: https://github.com/nryanov/kafka-connect-toolkit
+repo_name: nryanov/kafka-connect-toolkit
+
+theme:
+  name: material
+  features:
+    - navigation.expand
+    - navigation.sections
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Install: getting-started/install.md
+      - Quickstart: getting-started/quickstart.md
+  - Transforms:
+      - Common:
+          - Overview: transforms/common/index.md
+          - DropSchemaless: transforms/common/drop-schemaless.md
+          - HeaderFromField: transforms/common/header-from-field.md
+          - CastToString: transforms/common/cast-to-string.md
+          - StringToHash: transforms/common/string-to-hash.md
+          - InsertHash: transforms/common/insert-hash.md
+          - ConcatFields: transforms/common/concat-fields.md
+          - SetNull: transforms/common/set-null.md
+          - CopyFromTo: transforms/common/copy-from-to.md
+          - SwapValueAndKey: transforms/common/swap-value-and-key.md
+          - BytesToBase64: transforms/common/bytes-to-base64.md
+          - BytesToString: transforms/common/bytes-to-string.md
+          - DecimalAdjustScaleAndPrecision: transforms/common/decimal-adjust-scale-and-precision.md
+          - CardMask: transforms/common/card-mask.md
+          - ReplaceFieldName: transforms/common/replace-field-name.md
+          - ReplaceFieldValue: transforms/common/replace-field-value.md
+          - NormalizeFieldValue: transforms/common/normalize-field-value.md
+          - NormalizeFieldName: transforms/common/normalize-field-name.md
+      - Debezium:
+          - Common:
+              - Overview: transforms/debezium/common/index.md
+              - SchemaRename: transforms/debezium/common/schema-rename.md
+  - Converters:
+      - Debezium:
+          - Postgres:
+              - Overview: converters/debezium/postgres/index.md
+              - TimestampConverter: converters/debezium/postgres/timestamp-converter.md

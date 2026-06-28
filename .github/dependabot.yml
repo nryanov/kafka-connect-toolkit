@@ -10,4 +10,4 @@ updates:
       - "dependencies"
       - "dependabot"
     commit-message:
-      prefix: "Update dependency"
+      prefix: "chore"
