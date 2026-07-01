@@ -1,7 +1,7 @@
 [versions]
 kafka = "3.9.1"
 debezium = "3.3.1.Final"
-googleGuava = "33.5.0-jre"
+googleGuava = "33.6.0-jre"
 
 # test dependencies
 slfj4 = "2.0.18"
