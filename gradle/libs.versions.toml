@@ -12,7 +12,7 @@ agroal = "3.2.1"
 junit-platform = "6.1.0"
 testcontainers = "1.21.4"
 confluent = "7.9.1"
-avro = "1.12.0"
+avro = "1.12.1"
 logback = "1.5.37"
 
 [libraries]
