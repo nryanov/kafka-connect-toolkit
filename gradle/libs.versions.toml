@@ -1,5 +1,5 @@
 [versions]
-kafka = "3.9.1"
+kafka = "4.3.1"
 debezium = "3.5.2.Final"
 googleGuava = "33.6.0-jre"
 
