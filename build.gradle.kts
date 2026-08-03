@@ -2,7 +2,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar.Companion.shad
 
 plugins {
     id("java")
-    id("com.gradleup.shadow") version "9.2.2" apply false
+    id("com.gradleup.shadow") version "9.6.1" apply false
 }
 
 allprojects {
